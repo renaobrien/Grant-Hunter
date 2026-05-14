@@ -4,7 +4,12 @@ on:
   schedule:
     # Monday 13:00 UTC = 8am ET (during DST). 9am ET in winter — close enough.
     - cron: '0 13 * * 1'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      directive:
+        description: 'Optional steering note — folded into this run only (e.g. "focus on EU funders this week", "ignore blockchain")'
+        required: false
+        type: string
 
 concurrency:
   group: weekly-digest
@@ -39,4 +44,5 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+          DIRECTIVE: ${{ inputs.directive }}
         run: node index.js

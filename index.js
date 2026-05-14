@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const readline = require('readline');
 const { runDigest } = require('./agents/digest');
 const {
   listTrackedGrants,
@@ -18,19 +19,48 @@ function requireEnv(name) {
   }
 }
 
+function parseCliDirective() {
+  const args = process.argv.slice(2);
+  const flag = args.find(a => a.startsWith('--input=') || a.startsWith('--directive='));
+  if (flag) return flag.split('=').slice(1).join('=').trim();
+  const idx = args.findIndex(a => a === '--input' || a === '--directive');
+  if (idx >= 0 && args[idx + 1]) return args[idx + 1].trim();
+  return null;
+}
+
+async function promptDirective() {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await new Promise(resolve => {
+    rl.question('Steering note for this run (optional, press Enter to skip): ', resolve);
+  });
+  rl.close();
+  return answer.trim();
+}
+
+async function resolveDirective() {
+  const cli = parseCliDirective();
+  if (cli) return cli;
+  const env = (process.env.DIRECTIVE || '').trim();
+  if (env) return env;
+  if (process.stdin.isTTY && process.stdout.isTTY) return await promptDirective();
+  return '';
+}
+
 async function main() {
   for (const key of ['ANTHROPIC_API_KEY', 'SHEET_ID', 'GOOGLE_KEY_FILE', 'RECIPIENT_EMAIL', 'SMTP_USER', 'SMTP_PASSWORD']) {
     requireEnv(key);
   }
 
+  const directive = await resolveDirective();
   console.log(`[swb-grants] starting weekly digest (model: ${MODEL})`);
+  if (directive) console.log(`[swb-grants] directive: ${directive}`);
 
   // 1. Auto-discard tracked grants whose deadlines have passed
   const expired = await discardPastDeadlineGrants();
   console.log(`[swb-grants] auto-discarded ${expired.length} expired grants`);
 
   // 2. Search for new opportunities
-  const digest = await runDigest();
+  const digest = await runDigest({ directive });
   console.log(`[swb-grants] search returned ${digest.opportunities.length} opportunities`);
   if (digest.usage) {
     console.log(`[swb-grants] tokens — input: ${digest.usage.input_tokens}, output: ${digest.usage.output_tokens}`);

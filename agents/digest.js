@@ -2,8 +2,11 @@ const { ask } = require('../lib/claude');
 const { SWB_VOICE } = require('../lib/swbvoice');
 const { getPreferenceContext, todayIsoDate } = require('../lib/grants');
 
-function buildSearchPrompt(preferenceContext) {
+function buildSearchPrompt(preferenceContext, directive) {
   const today = todayIsoDate();
+  const directiveBlock = directive
+    ? `\nSTEERING NOTE FOR THIS RUN ONLY (from Jesse, treat as priority guidance on top of standing context):\n${directive}\n`
+    : '';
   return `
 ${SWB_VOICE}
 
@@ -11,6 +14,7 @@ Today's date is ${today}. Only surface grants whose deadlines are after today (o
 
 Human preference calibration from Jesse's prior scoring:
 ${preferenceContext}
+${directiveBlock}
 
 Search the web for newly announced or recently updated grant opportunities for Speech Without Borders. Cover both predefined sources and open-ended searches.
 
@@ -100,11 +104,14 @@ function parseDigest(raw) {
   };
 }
 
-async function runDigest() {
+async function runDigest({ directive = '' } = {}) {
   const preferenceContext = await getPreferenceContext();
+  const userMessage = directive
+    ? `Run this week's grant digest for Speech Without Borders. Today's date is ${todayIsoDate()}. Steering note: ${directive}`
+    : `Run this week's grant digest for Speech Without Borders. Today's date is ${todayIsoDate()}.`;
   const { text, usage } = await ask(
-    buildSearchPrompt(preferenceContext),
-    `Run this week's grant digest for Speech Without Borders. Today's date is ${todayIsoDate()}.`,
+    buildSearchPrompt(preferenceContext, directive),
+    userMessage,
     { useSearch: true },
   );
   const parsed = parseDigest(text);
