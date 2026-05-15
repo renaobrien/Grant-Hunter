@@ -67,13 +67,13 @@ ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-haiku-4-5
 SHEET_ID=...
 GOOGLE_KEY_FILE=./google-service-account.json
-RECIPIENT_EMAIL=jesse@example.com,rena@gitcoin.co
+RECIPIENT_EMAIL=you@example.com
 SMTP_USER=you@gmail.com
 SMTP_PASSWORD=xxxx xxxx xxxx xxxx
 FROM_EMAIL=SWB Grants Bot <you@gmail.com>
 ```
 
-`RECIPIENT_EMAIL` accepts comma-separated addresses if you want both Jesse and rena on the digest.
+`RECIPIENT_EMAIL` accepts comma-separated addresses if you want multiple people on the digest.
 
 ---
 

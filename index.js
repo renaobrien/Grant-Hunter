@@ -80,7 +80,7 @@ async function main() {
     }
 
     const existingMatch = existing.find(g => matchesGrant(g, opp));
-    if (existingMatch && Number(existingMatch.scoring) <= 2) continue; // Jesse rejected, never re-surface
+    if (existingMatch && Number(existingMatch.scoring) <= 2) continue; // user rejected, never re-surface
     if (existingMatch) {
       alreadyTracked += 1;
       continue; // already in sheet, don't re-email
@@ -107,7 +107,7 @@ async function main() {
 
   console.log(`[swb-grants] new: ${newGrants.length}, already tracked: ${alreadyTracked}, past deadline: ${skippedPastDeadline}, discarded expired: ${expired.length}`);
 
-  // 4. Email Jesse
+  // 4. Send digest email
   const { messageId, recipients } = await sendDigestEmail({
     grants: newGrants,
     summary: digest.summary,

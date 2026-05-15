@@ -5,14 +5,14 @@ const { getPreferenceContext, todayIsoDate } = require('../lib/grants');
 function buildSearchPrompt(preferenceContext, directive) {
   const today = todayIsoDate();
   const directiveBlock = directive
-    ? `\nSTEERING NOTE FOR THIS RUN ONLY (from Jesse, treat as priority guidance on top of standing context):\n${directive}\n`
+    ? `\nSTEERING NOTE FOR THIS RUN ONLY (from the user, treat as priority guidance on top of standing context):\n${directive}\n`
     : '';
   return `
 ${SWB_VOICE}
 
 Today's date is ${today}. Only surface grants whose deadlines are after today (or are clearly rolling with an active cycle).
 
-Human preference calibration from Jesse's prior scoring:
+Human preference calibration from the user's prior scoring:
 ${preferenceContext}
 ${directiveBlock}
 
