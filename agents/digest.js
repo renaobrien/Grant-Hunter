@@ -1,5 +1,5 @@
 const { ask } = require('../lib/claude');
-const { SWB_VOICE } = require('../lib/swbvoice');
+const { VOICE } = require('../lib/voice');
 const { getPreferenceContext, todayIsoDate } = require('../lib/grants');
 
 function buildSearchPrompt(preferenceContext, directive) {
@@ -8,45 +8,33 @@ function buildSearchPrompt(preferenceContext, directive) {
     ? `\nSTEERING NOTE FOR THIS RUN ONLY (from the user, treat as priority guidance on top of standing context):\n${directive}\n`
     : '';
   return `
-${SWB_VOICE}
+${VOICE}
 
 Today's date is ${today}. Only surface grants whose deadlines are after today (or are clearly rolling with an active cycle).
 
 Human preference calibration from the user's prior scoring:
 ${preferenceContext}
 ${directiveBlock}
-
-Search the web for newly announced or recently updated grant opportunities for Speech Without Borders. Cover both predefined sources and open-ended searches.
+Search the web for newly announced or recently updated grant opportunities aligned with the user's mission as defined in the USER CONTEXT section above. Cover both predefined sources and open-ended searches keyed off the user's priority themes.
 
 PREDEFINED SOURCES (check the live RFP / grants pages on each — not aggregator listings):
 Foundations / direct RFPs:
-- Mozilla Foundation, Knight Foundation, Ford Foundation, Omidyar Network, MacArthur Foundation
-- Open Society Foundations, Sloan Foundation, National Endowment for the Humanities
-- Electronic Frontier Foundation, Access Now
+- Major foundations the user listed under "FUNDERS TO ALWAYS CHECK"
+- Generally: Mozilla, Knight, Ford, Omidyar Network, MacArthur, Open Society, Sloan, NEH
 
-Blockchain / crypto ecosystem:
+Blockchain / crypto ecosystem (only if relevant to the user's focus areas):
 - Ethereum Foundation, Filecoin Foundation, Web3 Foundation, Gitcoin Grants
 
-Policy / academic:
-- Berkman Klein Center (Harvard), Stanford Internet Observatory, Yale Jackson Institute, Ash Center (Harvard Kennedy School)
+Policy / academic (only if relevant):
+- Berkman Klein (Harvard), Stanford Internet Observatory, Yale Jackson Institute, Ash Center
 
-OPEN-ENDED SEARCHES (mix these queries — surface anything credible that comes up):
-- "free expression" grant 2026 OR 2027
-- "digital rights" funding RFP
-- "platform governance" grant
-- "content moderation" research funding
-- "internet freedom" grant 2026
-- "online speech" foundation grant
-- "blockchain governance" privacy grant
-- "decentralized voting" funding
-- "AI" "free expression" grant
-- recent funding announcements in digital rights / speech / platform policy
+OPEN-ENDED SEARCHES — generate 8-12 queries from the user's PRIORITY THEMES. Combine themes with the current year and common grant-search modifiers like "RFP", "funding", "grant", "fellowship", "open call". Skip themes that don't match the mission.
 
 QUALITY FILTER:
 - Skip evergreen "we accept proposals year-round" listings unless there's a current cycle with a real deadline.
 - Skip aggregator-only listings; pull from the funder's actual program page.
 - Skip anything below ~$10K unless it is a prestigious named program.
-- Skip anything where SWB is clearly ineligible (e.g. funder requires US 501(c)(3) and SWB is ineligible — flag in blockers if uncertain rather than dropping).
+- Skip anything where the user is clearly ineligible (per their ELIGIBILITY CONSTRAINTS) — flag in blockers if uncertain rather than dropping.
 
 Return ONLY a JSON object with this shape (no prose before or after):
 {
@@ -60,10 +48,10 @@ Return ONLY a JSON object with this shape (no prose before or after):
       "fitScore": 4,
       "recommendation": "pursue | maybe | pass",
       "confidence": "low | medium | high",
-      "framingAngle": "best SWB angle (e.g. 'platform governance research', 'on-chain privacy + voting')",
+      "framingAngle": "best angle for the user's mission (e.g. 'platform governance research', 'on-chain privacy + voting')",
       "eligibilityNotes": "for-profit / nonprofit / geographic / partner requirements",
       "blockers": "main disqualifier or risk; 'Unknown' if none clear",
-      "notes": "2 short sentences on fit and why it matches SWB now",
+      "notes": "2 short sentences on fit and why it matches the user's mission now",
       "contacts": "program officer name + email if visible on the page, else empty",
       "sourceUrl": "official program page URL",
       "applicationUrl": "application page if distinct, else same as sourceUrl"
@@ -107,8 +95,8 @@ function parseDigest(raw) {
 async function runDigest({ directive = '' } = {}) {
   const preferenceContext = await getPreferenceContext();
   const userMessage = directive
-    ? `Run this week's grant digest for Speech Without Borders. Today's date is ${todayIsoDate()}. Steering note: ${directive}`
-    : `Run this week's grant digest for Speech Without Borders. Today's date is ${todayIsoDate()}.`;
+    ? `Run this week's grant digest for the user's mission. Today's date is ${todayIsoDate()}. Steering note: ${directive}`
+    : `Run this week's grant digest for the user's mission. Today's date is ${todayIsoDate()}.`;
   const { text, usage } = await ask(
     buildSearchPrompt(preferenceContext, directive),
     userMessage,

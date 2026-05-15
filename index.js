@@ -11,6 +11,8 @@ const {
 } = require('./lib/grants');
 const { sendDigestEmail } = require('./lib/email');
 const { MODEL } = require('./lib/claude');
+const { voiceIsTemplate } = require('./lib/voice');
+const { sendTelemetry } = require('./lib/telemetry');
 
 function requireEnv(name) {
   if (!process.env[name]) {
@@ -47,23 +49,29 @@ async function resolveDirective() {
 }
 
 async function main() {
+  if (voiceIsTemplate()) {
+    console.error('[grants-bot] ERROR: lib/voice.js still contains the placeholder template.');
+    console.error('[grants-bot] Fill in your mission, focus areas, and calibration scenarios before running. See README Step 1.');
+    process.exit(1);
+  }
+
   for (const key of ['ANTHROPIC_API_KEY', 'SHEET_ID', 'GOOGLE_KEY_FILE', 'RECIPIENT_EMAIL', 'SMTP_USER', 'SMTP_PASSWORD']) {
     requireEnv(key);
   }
 
   const directive = await resolveDirective();
-  console.log(`[swb-grants] starting weekly digest (model: ${MODEL})`);
-  if (directive) console.log(`[swb-grants] directive: ${directive}`);
+  console.log(`[grants-bot] starting weekly digest (model: ${MODEL})`);
+  if (directive) console.log(`[grants-bot] directive: ${directive}`);
 
   // 1. Auto-discard tracked grants whose deadlines have passed
   const expired = await discardPastDeadlineGrants();
-  console.log(`[swb-grants] auto-discarded ${expired.length} expired grants`);
+  console.log(`[grants-bot] auto-discarded ${expired.length} expired grants`);
 
   // 2. Search for new opportunities
   const digest = await runDigest({ directive });
-  console.log(`[swb-grants] search returned ${digest.opportunities.length} opportunities`);
+  console.log(`[grants-bot] search returned ${digest.opportunities.length} opportunities`);
   if (digest.usage) {
-    console.log(`[swb-grants] tokens — input: ${digest.usage.input_tokens}, output: ${digest.usage.output_tokens}`);
+    console.log(`[grants-bot] tokens — input: ${digest.usage.input_tokens}, output: ${digest.usage.output_tokens}`);
   }
 
   // 3. Filter, dedupe, persist
@@ -105,7 +113,7 @@ async function main() {
     return aDays - bDays;
   });
 
-  console.log(`[swb-grants] new: ${newGrants.length}, already tracked: ${alreadyTracked}, past deadline: ${skippedPastDeadline}, discarded expired: ${expired.length}`);
+  console.log(`[grants-bot] new: ${newGrants.length}, already tracked: ${alreadyTracked}, past deadline: ${skippedPastDeadline}, discarded expired: ${expired.length}`);
 
   // 4. Send digest email
   const { messageId, recipients } = await sendDigestEmail({
@@ -120,10 +128,18 @@ async function main() {
     sheetId: process.env.SHEET_ID,
   });
 
-  console.log(`[swb-grants] email sent to ${recipients.join(', ')} (id: ${messageId})`);
+  console.log(`[grants-bot] email sent to ${recipients.join(', ')} (id: ${messageId})`);
+
+  // 5. Fire-and-forget telemetry (opt-out via TELEMETRY=off)
+  await sendTelemetry({
+    model: MODEL,
+    directive,
+    grants: newGrants,
+    summary: digest.summary,
+  });
 }
 
 main().catch(err => {
-  console.error('[swb-grants] FATAL:', err);
+  console.error('[grants-bot] FATAL:', err);
   process.exit(1);
 });

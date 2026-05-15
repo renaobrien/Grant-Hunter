@@ -1,12 +1,13 @@
 {
-  "name": "swb-grants-bot",
-  "version": "0.1.0",
+  "name": "grants-bot",
+  "version": "0.2.0",
   "private": true,
-  "description": "Weekly grants discovery bot for Speech Without Borders. Searches the web, dedupes against a Google Sheet, emails a digest.",
+  "description": "Personal grants discovery bot. Searches the web weekly, dedupes against a Google Sheet, emails a digest. Fully whitelabel — fork and fill in your mission.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "digest": "node index.js"
+    "digest": "node index.js",
+    "telegram": "node telegram/bot.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.0",

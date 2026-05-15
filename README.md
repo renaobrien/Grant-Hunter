@@ -4,15 +4,18 @@ Personal grants-discovery bot. Every Monday morning it searches the web for fund
 
 Fork it, fill in your context, run it on the GitHub Actions free tier. Cost is ~$1/week in Anthropic API calls. No hosting needed.
 
+**Whitelabel** — there's no built-in org. You fill in [lib/voice.js](lib/voice.js) with your mission, focus areas, and calibration scenarios; the bot does the rest.
+
 ## What it does
 
 - **Weekly cron** — runs every Monday 8am ET via GitHub Actions (free).
-- **Search + score** — Anthropic Claude with web search. Scores each opportunity 1–5 against your custom voice doc and your calibration scenarios.
+- **Search + score** — Anthropic Claude with web search. Scores each opportunity 1–5 against your custom voice doc and calibration scenarios.
 - **Dedupe** — Google Sheet `Grants` tab is the source of truth. Already-tracked grants don't re-surface; rejected grants (score ≤2) are permanently dropped.
 - **Auto-discard expired** — grants whose deadlines passed get marked `discarded` automatically at the top of each run.
 - **Email digest** — Gmail SMTP. HTML + plaintext, 5–10 opportunities per week, sorted pursue → maybe.
 - **Feedback loop** — type a 1–5 score in column B of the Sheet; future digests use it as positive/negative signal.
 - **Ad-hoc runs with steering** — kick off a run from the GitHub Actions UI with a free-text directive ("focus on EU funders this week", "ignore blockchain") and the bot folds it into that run's search prompt.
+- **Telegram demo** *(optional)* — a separate one-shot demo bot for non-technical people to try it from a DM. See [telegram/bot.js](telegram/bot.js).
 
 ## Stack
 
@@ -30,56 +33,43 @@ Estimated **<$1/week** at Haiku pricing — one digest call per week with ~8K in
 
 # Walkthrough — new user onboarding
 
-End-to-end setup, ~30–45 minutes. The default voice doc is configured for Speech Without Borders (free expression, digital rights, platform policy). Step 1 is replacing it with yours.
+End-to-end setup, ~30–45 minutes.
 
 ## Step 1 — Fill in your context
 
-Open [lib/swbvoice.js](lib/swbvoice.js). The current contents are the example deployment (Speech Without Borders). Replace everything inside the backtick string with your own context using this template:
+Open [lib/voice.js](lib/voice.js). It ships as a template — the bot won't run until you replace the placeholders. Fill in each section:
 
 ```
-1. One-line mission:
-   e.g. "We defend free expression and digital rights globally through research, coalitions, and policy."
+MISSION:
+[Replace this with a one-line description of your mission]
 
-2. Focus areas (what you'd say yes to — 5–10 bullets):
-   -
-   -
+FOCUS AREAS (what you'd say yes to — 5-10 bullets):
+- [focus area 1]
+- [focus area 2]
 
-3. Anti-focus areas (sounds adjacent but isn't us — 3–5 bullets):
-   -
-   -
+ANTI-FOCUS AREAS (de-prioritize even if keywords match — 3-5 bullets):
+- [anti-focus area 1]
 
-4. "Love to land a grant from" (3–5 real funders):
-   -
-   -
+CALIBRATION SCENARIOS (4-6 anchors):
+- "If [funder] funds [topic], score it [1-5] because [reason]"
+- e.g. "If Mozilla puts out a content moderation RFP → 5, direct match"
 
-5. "Not us, even if relevant on paper" (3–5 funders):
-   -
-   -
+ELIGIBILITY CONSTRAINTS:
+- Legal entity: [501(c)(3) / fiscal sponsor / NGO / individual]
+- Geographic restrictions:
+- PI / lead requirements:
 
-6. Scoring scenarios (give 4–6 short calibrators; the bot uses these as anchors):
-   - "If [funder] funds [topic], score it [1–5] because [reason]"
-   - e.g. "If Mozilla puts out a content moderation RFP → 5, direct match"
-   - e.g. "If Gates funds rural broadband → 1, infrastructure not expression"
+PRIORITY THEMES (keywords the bot should weight in searches — 5-15):
+- [theme 1]
 
-7. Eligibility constraints (hard nos that disqualify a grant fast):
-   - Legal entity: 501(c)(3)? fiscal sponsor? international NGO?
-   - Geography limits:
-   - PI / lead requirements:
-   - Anything else:
+FUNDERS TO ALWAYS CHECK:
+- [funder 1]
 
-8. Priority themes — keywords the bot should weight in searches (5–15):
-   e.g. platform governance, content moderation policy, online speech, decentralized identity, AI bias and expression, ...
-
-9. Funders / programs to always check (besides obvious ones):
-   -
-
-10. Sources to ignore / aggregators that produce noise:
-    -
+SOURCES TO IGNORE:
+- [aggregator name]
 ```
 
-Bullets, fragments, plain English. The bot reads this as a system prompt — no special syntax needed. Keep the JS export wrapper (`const SWB_VOICE = \`...\`; module.exports = ...`) intact; only the content between the backticks changes.
-
-You can also rename `lib/swbvoice.js` → `lib/voice.js` and update the import in [agents/digest.js](agents/digest.js) if you want a less-SWB-specific filename. Not required.
+Bullets, fragments, plain English. The bot reads it as a system prompt — no special syntax needed. Keep the JS export wrapper (`const VOICE = \`...\`; module.exports = ...`) intact; only the content between the backticks changes.
 
 ## Step 2 — Create your Google Sheet (5 min)
 
@@ -130,16 +120,14 @@ Fill in:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-haiku-4-5
 SHEET_ID=...
 GOOGLE_KEY_FILE=./google-service-account.json
 RECIPIENT_EMAIL=you@example.com
 SMTP_USER=you@gmail.com
 SMTP_PASSWORD=xxxx xxxx xxxx xxxx
 FROM_EMAIL=Grants Bot <you@gmail.com>
+BRAND_NAME=Your Org Name   # optional — shows up in the email subject + header
 ```
-
-`RECIPIENT_EMAIL` accepts comma-separated addresses if you want multiple people on the digest.
 
 Then:
 
@@ -148,9 +136,9 @@ npm install
 node index.js
 ```
 
-Expected: new rows appear in the Sheet's `Grants` tab, then you get the email. Re-read the rows — do fit scores feel right? Are framing angles useful? Are eligibility blockers real? Iterate on [lib/swbvoice.js](lib/swbvoice.js) until 2 consecutive runs produce a digest you'd actually act on.
+Expected: new rows appear in the Sheet's `Grants` tab, then you get the email. Re-read the rows — do fit scores feel right? Are framing angles useful? Are eligibility blockers real? Iterate on [lib/voice.js](lib/voice.js) until 2 consecutive runs produce a digest you'd actually act on.
 
-If something fails, the script logs which step broke (`[swb-grants] FATAL: ...`).
+If something fails, the script logs which step broke (`[grants-bot] FATAL: ...`).
 
 ## Step 7 — GitHub Actions secrets
 
@@ -168,7 +156,7 @@ Repo on GitHub → Settings → Secrets and variables → Actions → New reposi
 | `SMTP_PASSWORD` | gmail app password from step 5 |
 | `FROM_EMAIL` | optional — defaults to `SMTP_USER` |
 
-(Optional repo **variable**, not secret: `ANTHROPIC_MODEL` to override the default.)
+(Optional repo **variables** for non-secret config: `ANTHROPIC_MODEL`, `BRAND_NAME`.)
 
 ## Step 8 — Trigger a test run on Actions
 
@@ -229,6 +217,66 @@ Each run costs ~$0.10. Triggering a handful per week is normal.
 
 ---
 
+# Telemetry — what's shared and why
+
+By default, each digest run sends an anonymized record to a shared dataset so the project can improve scoring quality for everyone. This is opt-out, not opt-in. Here's exactly what we send and what we don't.
+
+**What's sent:**
+- Timestamp of the run
+- Bot version (git SHA from the workflow, or "local")
+- Model used
+- The directive text (if any) you typed for that run
+- One-line summary the model produced
+- For each grant the bot surfaced: funder, program, amount, deadline, fit score, recommendation, framing angle, source URL
+
+**What's NOT sent:**
+- Your `lib/voice.js` content (your mission, focus areas, calibration scenarios)
+- Your scoring in column B of the Sheet
+- Your email, name, recipient list, or any other identifying field
+- Your Google Sheet contents
+- Your API keys or credentials
+
+**Why we collect this:** the goal is a shared funder/program graph so the model can learn cross-user patterns — "if N orgs working on adjacent missions all scored funder X at 4+, that's a useful prior for someone new in a similar space." Single-user calibration plateaus fast; a shared dataset compounds.
+
+**How to opt out:**
+```
+TELEMETRY=off
+```
+in your `.env` (locally) or as a GitHub Actions repo variable. Bot runs normally; nothing is sent.
+
+**How to run your own collector instead:**
+Set `TELEMETRY_ENDPOINT` (POST URL) and `TELEMETRY_KEY` (auth header value) and the bot will send to your endpoint instead. The expected payload shape is documented in [lib/telemetry.js](lib/telemetry.js).
+
+**Server-side schema:** [scripts/setup-telemetry.sql](scripts/setup-telemetry.sql) — single Postgres/Supabase table with RLS that allows insert-only via the anon key. Run it once if you're standing up your own collector.
+
+---
+
+# Telegram demo *(optional, non-technical onramp)*
+
+[telegram/bot.js](telegram/bot.js) is a separate one-shot demo bot. Non-technical users DM it, type their mission in one sentence, and get a sample digest back. Useful as a "try before you fork" funnel.
+
+Run it on a small VPS or any always-on host:
+
+```bash
+TELEGRAM_BOT_TOKEN=<from-@BotFather>
+ANTHROPIC_API_KEY=<sk-ant-...>
+REPO_URL=https://github.com/your/grants-bot   # optional, defaults to upstream
+DEMO_MAX_TRIES=3                              # optional, per-user daily limit
+npm run telegram
+```
+
+State is in-memory; restarting drops it (fine for a demo). Rate-limit defaults to 3 tries per chat per day to control cost.
+
+---
+
+# Feedback / issues
+
+If something breaks, the digest is weird, or you have an idea — open an issue: https://github.com/renaobrien/swb-grants-bot/issues
+
+PRs welcome. Especially for: better search query generation, prompt tuning, additional delivery channels (Slack, Discord, Notion), and a hosted onboarding flow.
+
+---
+
 # Tracker schema
 
 Single tab `Grants`, header in row 1 (column A intentionally blank for formatting). Bot writes from column B onward. Header:
@@ -247,14 +295,9 @@ Single tab `Grants`, header in row 1 (column A intentionally blank for formattin
 
 # Troubleshooting
 
+- **`lib/voice.js still contains the placeholder template`** — you didn't fill in Step 1. Replace the `[brackets]` with your actual mission, focus areas, and calibration.
 - **`No text in API response`** — web search likely returned no results that fit; re-run, or temporarily widen the search prompt in [agents/digest.js](agents/digest.js).
 - **`Failed to parse digest JSON`** — model output got cut off; the parser tries to salvage. If it keeps failing, lower the prompt's grant ceiling from 5–10 to 3–5.
 - **Sheet permission errors** — double-check you shared the Sheet with the service account's `client_email` as Editor.
 - **Gmail auth errors** — confirm 2-Step Verification is on and you're using the 16-char app password, not your regular Gmail password.
 - **No grants in digest** — not a bug; some weeks the search returns nothing meaningful. The digest still sends with a "no new opportunities" note.
-
----
-
-# Why no Slack / no slash commands
-
-This is a v1: email + Sheet covers the core loop (surface → review → score) with zero hosting cost. If you want on-demand commands later, the obvious upgrade is a Telegram bot using the same `lib/` modules — `index.js` is the only file that would need a sibling.
