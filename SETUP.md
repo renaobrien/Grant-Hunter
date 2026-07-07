@@ -43,22 +43,36 @@ allowlist. Safe to re-run.
 
 ## Notifications — pick your channel(s)
 
-Weekly digests + alerts (new grant, deadline, draft ready) fan out to whichever channels
-you turn on. `npm run setup` walks you through this — you can pick **more than one**, and
-re-running setup updates them in place.
+Weekly digests + alerts (new grant, deadline, draft ready) go to whichever channels you turn
+on. `npm run setup` prompts you for these — you can pick **more than one**, and re-running
+setup updates them in place. Grab the credential you want *before* running setup so you can
+paste it when asked. Full step-by-step for each:
 
-- **Slack** — create an [Incoming Webhook](https://api.slack.com/messaging/webhooks) for a
-  channel, then paste the webhook URL during setup. No env var needed.
-- **Discord** — **Server Settings → Integrations → Webhooks → New Webhook**, copy the URL,
-  and paste it during setup. No env var needed.
-- **Telegram** — create a bot via [@BotFather](https://t.me/BotFather) (gives you a token),
-  get your `chat_id` (message [@userinfobot](https://t.me/userinfobot)), then enter both
-  during setup. The token is saved to `.env.local` as `TELEGRAM_BOT_TOKEN`.
-- **Email** — add a [Resend](https://resend.com) API key and a verified **From** address,
-  plus the recipient list. The key is saved to `.env.local` as `RESEND_API_KEY`.
+### Slack (webhook — 2 min)
+1. Go to <https://api.slack.com/apps> → **Create New App** → **From scratch**; name it, pick your workspace.
+2. In the app, open **Incoming Webhooks** → toggle **Activate Incoming Webhooks** on.
+3. Click **Add New Webhook to Workspace**, choose the channel, **Allow**.
+4. Copy the webhook URL (`https://hooks.slack.com/services/…`) and paste it when setup asks. No env var needed.
 
-Prefer to skip it for now? Just press Enter at the channel prompt — you can re-run
-`npm run setup` any time to add channels later.
+### Discord (webhook — 1 min)
+1. In your server, open **Server Settings → Integrations → Webhooks → New Webhook**.
+2. Pick the channel, click **Copy Webhook URL**.
+3. Paste it when setup asks. No env var needed.
+
+### Telegram (bot — 3 min)
+1. In Telegram, message [@BotFather](https://t.me/BotFather) → `/newbot`, follow the prompts. It gives you a **bot token** (`123456:ABC…`).
+2. Send your new bot any message (so it can reply to you), then message [@userinfobot](https://t.me/userinfobot) to get your numeric **chat_id**.
+3. Enter the token and chat_id when setup asks. The token is saved to `.env.local` as `TELEGRAM_BOT_TOKEN`.
+
+### Email (Resend — 3 min)
+1. Sign up at [resend.com](https://resend.com) (free tier = 100 emails/day).
+2. **Domains** → add and verify a sending domain (or use their test/onboarding sender to start).
+3. **API Keys** → **Create API Key**, copy it (`re_…`).
+4. Enter the API key, a verified **From** address, and your recipient list when setup asks. The key is saved to `.env.local` as `RESEND_API_KEY`.
+
+Prefer to skip for now? Press Enter at the channel prompt — you can re-run `npm run setup`
+any time to add or change channels. (You can also toggle channels later on the dashboard's
+**Settings** page.)
 
 ## 4. Onboard your org
 
@@ -70,6 +84,20 @@ Answer ~6 questions about your org (mission, entity/stage, what to fund, what to
 example grants). Claude compiles them into your **profile** — the "voice" every agent uses.
 It prints a preview of the exact prompt the agents will read. Re-run anytime, or edit it
 later in the dashboard.
+
+**The "what to avoid" answer matters as much as "what to fund."** Whatever you list here
+becomes the agents' do-not-surface list (stored as `anti_patterns` + `eligibility_constraints`
+in your profile), so be concrete. Examples of what to rule out:
+
+- **Framings** you're not: e.g. "consumer app", "surveillance tech", "for-profit data broker".
+- **Grant types** that waste your time: e.g. "requires a university PI", "corporate-only /
+  no nonprofit track", "invite-only", "requires exclusive/proprietary IP".
+- **Geographies** you can't serve, and **sizes** below your minimum (e.g. "nothing under $10k").
+- **Any funder or theme** that keeps showing up wrongly — name it so the Skeptic kills it early.
+
+The more specific your avoid-list, the less noise every future run produces. You can keep
+refining it by rating grants 1–2 with a reason in the dashboard — that feeds back into the
+same list automatically.
 
 ## 5. Turn on weekly discovery (no server needed)
 

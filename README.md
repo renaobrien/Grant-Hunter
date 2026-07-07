@@ -28,10 +28,6 @@ Then add three GitHub repo secrets and weekly discovery runs on its own — no s
 See **[SETUP.md](./SETUP.md)** for the full walkthrough (~15 minutes), including deploying
 the dashboard to Vercel.
 
-> This repo began as a single-org bot (Speech Without Borders). That original code is
-> preserved on the [`legacy-swb-bot`](https://github.com/renaobrien/grants-platform/tree/legacy-swb-bot)
-> branch; `main` is the white-label rewrite.
-
 ## What it costs to run
 
 You bring your own accounts and pay your own usage — there's no vendor in the middle. For a
@@ -81,9 +77,14 @@ scripts/                 setup + onboarding (guided, interactive)
 examples/                sample org profiles (reference only — not applied)
 ```
 
-## Auth & data model
+## Who can access it
 
-Single organization per instance, so there's no multi-tenant machinery. The dashboard is gated by a small **members allowlist** (emails you authorize). Signed-in members read/write via RLS; anonymous visitors get nothing. Agents use the service-role key. Your org's identity lives in one `profile` row (filled during onboarding), which is rendered into every agent's prompt — that's what makes it white-label.
+This is a private tool for one organization — there's no sign-up, no other tenants.
+
+- **People** log into the dashboard with a magic link, but only if their email is on your **members allowlist** (you choose who's on it). Everyone else — and anyone not signed in — sees nothing. That's enforced in the database itself (Row-Level Security), not just hidden in the UI.
+- **The agents** (discovery, drafting, deadline sweeps) run in the background with a privileged server key, so they keep working regardless of who's logged in.
+
+Everything the agents know about your org lives in one **profile** record you fill in during onboarding — mission, what you do, what you're eligible for, what to avoid. Every agent reads that record before it acts. Swap the profile and the exact same code runs for a completely different organization — that's what makes it white-label.
 
 ## Safety
 
