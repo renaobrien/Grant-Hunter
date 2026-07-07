@@ -4,10 +4,12 @@ You'll run your own private copy: your Supabase database, your Anthropic key, yo
 
 ## Prerequisites
 
-- **Node 20+** and **npm**
-- A free **Supabase** account → create one project (note the project ref)
-- An **Anthropic API key** (`sk-ant-…`)
-- *(optional)* a **Resend** API key for email, and a **Telegram bot token** for Telegram
+- **Node 20+** and **npm** (Node 22 recommended — supabase-js warns on 20)
+- A **Supabase** account → create one project, note the project ref. The **free tier** is
+  fine to start (2 free projects per org); a dedicated project is **~$10/mo** beyond that.
+- An **Anthropic API key** (`sk-ant-…`) — this is what the agents spend; see [costs](#costs--safety) below.
+- *(optional)* a channel to receive digests: a **Slack**/**Discord** webhook URL, a **Telegram**
+  bot token, or a **Resend** API key for email. You can pick more than one, or skip and add later.
 
 ## 1. Clone + install
 
@@ -24,7 +26,7 @@ Link the repo to your Supabase project and push the schema:
 ```bash
 npx supabase login
 npx supabase link --project-ref <your-project-ref>
-npm run db:push        # applies supabase/migrations/0001_init.sql
+npm run db:push        # applies everything in supabase/migrations/
 ```
 
 > No Edge Functions to deploy — Supabase is just Postgres + Auth here.
@@ -90,18 +92,23 @@ The dashboard is a standard Next.js app — deploy to **Vercel** (or Netlify / y
 1. Import the repo in Vercel.
 2. Set env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
    `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY` (+ `RESEND_*` / `TELEGRAM_*` if used).
-3. Deploy, then log in with your owner email (magic link).
-
-*(The dashboard, notifications, and the on-demand drafting loop land in Phase 1 — the
-engine and setup above are Phase 0.)*
+3. In Supabase → **Auth → URL Configuration**, set **Site URL** to your Vercel URL so
+   magic links point back to your deployment.
+4. Deploy, then log in with your owner email (magic link).
 
 ## Costs & safety
 
-You pay only your own Anthropic usage (a weekly run is typically a few dollars/month).
-A hard **daily budget cap** (`settings.daily_budget_usd`, default $5) is checked at the
-start of every discovery run and again before each round — if it's spent, the run stops
-and logs why, so a misconfiguration can't drain your account. Every agent call is
-recorded in `agent_runs` with tokens, web searches, and estimated cost (rounded up).
+Full breakdown is in the [README cost table](./README.md#what-it-costs-to-run). In short:
+Supabase (free tier, or ~$10/mo dedicated), Vercel + GitHub Actions (free), optional
+Resend/Slack/Discord/Telegram (free) — plus your **Anthropic usage**, typically a few
+dollars/month for a weekly run.
+
+You pay only your own Anthropic bill. A hard **daily budget cap** (`settings.daily_budget_usd`,
+default $5) is checked at the start of every discovery run and again before each round — if
+it's spent, the run stops and logs why, so a misconfiguration can't drain your account. Every
+agent call is recorded in `agent_runs` with tokens, web searches, and estimated cost (rounded
+up), visible on the dashboard's Runs page. Tip: for your very first run, set
+`daily_budget_usd = 2` and `discovery_rounds = 1` in the `settings` table.
 
 ## Local run of the engine
 

@@ -2,10 +2,10 @@
 
 **A white-label, self-hosted grant discovery + application assistant.** Clone it, run one setup command, fill in your org profile, and you get:
 
-- A **dashboard** pipeline (Searched / Active / Pending / Applied / Closed).
+- A **dashboard** pipeline board (Searched / Active / Pending / Closed) with the full agent debate transcript on every grant.
 - **Adversarial agents** that discover grants (Finder → Skeptic → Judge) and draft applications (Drafter ⇄ Critic) — agents that argue *against* each other so weak matches get killed before they reach you.
 - A **teaching loop** — rate suggestions by number *and* freeform text; future runs learn from it.
-- **Email + Telegram** digests, deadline reminders, and draft-ready alerts.
+- Digests, deadline reminders, and draft-ready alerts to the **channel of your choice** — Slack, Discord, Telegram, or email (pick any, or several).
 - An **org profile** (mission, capabilities, ethos, eligibility) that drives everything. Nothing about any organization is hardcoded — you fill it in during onboarding.
 
 This is the open-source, productized successor to a single-org grant bot. It reuses a grant-research engine already proven in production and strips out everything org-specific so **any** org can run their own instance.
@@ -32,11 +32,29 @@ the dashboard to Vercel.
 > preserved on the [`legacy-swb-bot`](https://github.com/renaobrien/grants-platform/tree/legacy-swb-bot)
 > branch; `main` is the white-label rewrite.
 
+## What it costs to run
+
+You bring your own accounts and pay your own usage — there's no vendor in the middle. For a
+typical low-volume org (one weekly discovery run), realistic monthly cost is **≈ $0–15 plus
+your Anthropic usage**:
+
+| Service | What it's for | Cost |
+|---|---|---|
+| **Anthropic API** | The agents' Claude calls (the actual work) — Opus for the adversaries/drafter, Sonnet for search, plus web search | Pay-as-you-go. A weekly discovery run is typically **a few dollars/month**. A hard **daily budget cap** (`settings.daily_budget_usd`, default $5) stops runs before they overspend. |
+| **Supabase** | Postgres database + magic-link auth | **Free tier** covers this comfortably (2 free projects per org). A dedicated **paid project is ~$10/mo** if you're past the free tier or want it isolated. |
+| **Vercel** | Hosts the dashboard | **Free** (Hobby tier). |
+| **GitHub Actions** | Runs weekly discovery + the 30-min jobs worker — no server to keep alive | **Free** tier minutes cover it easily. |
+| **Resend** (optional, email) | Email digests | **Free** tier = 100 emails/day. |
+| **Slack / Discord / Telegram** (optional) | Digests + alerts | **Free** (just a webhook or bot token). |
+
+Every agent call is logged to `agent_runs` with tokens, web-search count, and estimated cost,
+so you can see exactly what you're spending on the dashboard's Runs page.
+
 ## Stack
 
 - **Next.js** (App Router) + **Supabase** (Postgres + Auth) — Supabase is just your database and login; no Deno / Edge Functions to manage.
 - The **agent engine is plain Node/TypeScript** (`engine/`, run via `tsx`), driven by a **GitHub Actions cron** — the zero-hosting pattern: discovery runs in GitHub on a schedule, no server to keep alive. An optional long-lived Node worker can run the on-demand drafting loop with lower latency.
-- **Claude** (latest models) with web search. Email via **Resend**; **Telegram** via bot webhook (handled by a Next.js API route).
+- **Claude** (latest models) with web search. Notifications fan out to Slack / Discord / Telegram (bot API) / email (**Resend**) via one dispatcher.
 
 ## Layout
 
@@ -44,18 +62,22 @@ the dashboard to Vercel.
 engine/                  the agent engine (Node/TS)
   types.ts               shared types
   render-profile.ts      profile row -> system prompt (the white-label core) + agent role blocks
-  anthropic.ts           Claude wrapper + cost estimation + JSON salvage
+  anthropic.ts           Claude wrapper (@anthropic-ai/sdk) + cost estimation + JSON salvage
   preference-context.ts  the teaching loop (numeric + freeform -> prompt context)
   db.ts                  service-role Supabase access, budget cap, run logging, grant upsert
-  agents/                finder.ts, skeptic.ts, judge.ts (the adversarial ensemble)
+  notify.ts              one dispatcher -> Slack / Discord / Telegram / email
+  agents/                finder.ts, skeptic.ts, judge.ts, drafter.ts, critic.ts
   discovery.ts           orchestrator: N rounds of Finder -> Skeptic -> Judge
-  run-discovery.ts       entrypoint (GitHub Action / worker)
+  draft.ts               Drafter <-> Critic narrative loop
+  run-discovery.ts       entrypoint: weekly discovery + digest
+  run-jobs.ts            entrypoint: drain draft jobs + sweep deadlines (every 30 min)
 .github/workflows/
-  discovery.yml          weekly cron that runs the engine (no server needed)
-supabase/
-  migrations/            SQL schema + RLS (single-org; applied by `setup`)
-app/                     Next.js dashboard + API routes (Phase 1)
-scripts/                 setup + onboarding scripts
+  discovery.yml          weekly cron (Mondays) — discovery
+  jobs.yml               */30 cron — drafting jobs + deadline reminders
+supabase/migrations/     SQL schema + RLS (single-org; applied by `npm run db:push`)
+app/                     Next.js dashboard (board, grant detail, profile, settings, runs)
+lib/ components/         dashboard supabase clients, types, shared UI
+scripts/                 setup + onboarding (guided, interactive)
 examples/                sample org profiles (reference only — not applied)
 ```
 
@@ -69,6 +91,7 @@ A per-instance **daily budget cap** (`settings.daily_budget_usd`) is checked at 
 
 ## Status
 
-Phase 0 (engine, schema, setup/onboarding) complete and typechecked. Phase 1 (dashboard:
-login, pipeline board, ratings, profile editor) is next; then notifications + the
-Drafter ⇄ Critic loop. Nothing is deployed by this repo — you provision your own instance.
+Feature-complete and typechecked (`tsc` clean, `next build` passes): the adversarial
+discovery engine, the Drafter ⇄ Critic drafting loop, the jobs worker, channel-of-choice
+notifications, and the full dashboard are all built. Nothing is deployed *by this repo* —
+each user provisions their own instance (see [SETUP.md](./SETUP.md)).
