@@ -14,17 +14,23 @@ This is the open-source, productized successor to a single-org grant bot. It reu
 
 **One org per instance — you own it end to end.** Each user clones this repo and stands up their own copy: their own Supabase project, their own Anthropic / email / Telegram keys, their own deploy. There is no shared server and no vendor holding your data.
 
+Use this repo as a template (GitHub → **Use this template**) or fork it, then:
+
 ```bash
-git clone <this repo> && cd grants-platform
+git clone https://github.com/renaobrien/grants-platform && cd grants-platform
 npm install
 npx supabase link --project-ref <your-ref> && npm run db:push   # create the schema
-npm run setup     # your keys + owner allowlist → .env.local
+npm run setup     # your keys + owner allowlist + notification channel → .env.local
 npm run onboard   # AI interview → your org profile (the agents' "voice")
 ```
 
 Then add three GitHub repo secrets and weekly discovery runs on its own — no server.
 See **[SETUP.md](./SETUP.md)** for the full walkthrough (~15 minutes), including deploying
 the dashboard to Vercel.
+
+> This repo began as a single-org bot (Speech Without Borders). That original code is
+> preserved on the [`legacy-swb-bot`](https://github.com/renaobrien/grants-platform/tree/legacy-swb-bot)
+> branch; `main` is the white-label rewrite.
 
 ## Stack
 
