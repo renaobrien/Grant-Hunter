@@ -1,0 +1,22 @@
+node_modules/
+.next/
+out/
+dist/
+.env
+.env.local
+.env*.local
+*.log
+.DS_Store
+
+# TypeScript / Next.js build artifacts (regenerated)
+*.tsbuildinfo
+next-env.d.ts
+
+# Supabase local
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# never commit service-account keys or secrets
+*service-account*.json
+*.pem

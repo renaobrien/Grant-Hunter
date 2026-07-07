@@ -1,0 +1,49 @@
+{
+  "_comment": "Example filled profile (fictional org) — a reference for writing your own. NOT loaded by setup; onboarding writes the real profile. Shows how the fields generalize beyond any one org.",
+  "org_name": "Open Sensor Collective",
+  "one_liner": "a nonprofit building open-source environmental sensors for rural communities",
+  "mission": "Put affordable, trustworthy air- and water-quality data in the hands of communities that regulators overlook.",
+  "problem": "Rural and low-income communities lack the monitoring infrastructure to detect pollution, so harms go undocumented and unaddressed.",
+  "stage": "early operating — two deployed pilots, seeking to scale hardware + data platform",
+  "entity_type": "501(c)(3) nonprofit",
+  "jurisdiction": "United States (Oregon)",
+  "team_summary": "four staff: two hardware engineers, one community organizer, one data scientist",
+  "traction": "2 county pilots live, ~40 sensors deployed, one published dataset; no earned revenue",
+  "revenue_model": "grants + optional data-platform support contracts with municipalities",
+  "capabilities": [
+    "low-cost IoT sensor design and manufacturing",
+    "open data pipelines and public dashboards",
+    "community science / participatory monitoring programs",
+    "environmental data analysis and reporting"
+  ],
+  "ethos": "Open by default, community-owned data, and rigor over hype. We prioritize funders who respect community sovereignty over data and do not require exclusive IP.",
+  "eligibility_constraints": [
+    { "label": "Entity", "detail": "501(c)(3) nonprofit — eligible for most foundation and government grants; for corporate/for-profit-only funds, check for a nonprofit track." },
+    { "label": "Affiliation", "detail": "No university affiliation. Flag grants that require an academic PI unless a partner path exists." },
+    { "label": "Geography", "detail": "US-based, Oregon-focused but can serve any US community. For place-based funders, check whether our region qualifies." },
+    { "label": "Open source", "detail": "Our hardware and data are open by default. Flag any grant that requires exclusive/proprietary outputs — likely a mismatch." }
+  ],
+  "min_amount": 10000,
+  "max_amount": 500000,
+  "geographies": ["US", "Pacific Northwest", "place-based rural"],
+  "open_source_posture": "outputs are open by default; proprietary-output requirements are usually a disqualifier",
+  "framing_angles": [
+    { "name": "Environmental justice", "description": "monitoring for communities that regulators overlook; documenting undocumented harms" },
+    { "name": "Open science infrastructure", "description": "open hardware, open data pipelines, reproducible community monitoring" },
+    { "name": "Civic technology", "description": "public dashboards and participatory data for local decision-making" }
+  ],
+  "target_grant_types": [
+    "environmental foundations funding monitoring, air/water quality, or environmental justice",
+    "open-source / open-science technology funders",
+    "government (EPA, state) community-monitoring and citizen-science programs",
+    "civic-tech and data-for-good funders",
+    "place-based funders serving the Pacific Northwest"
+  ],
+  "anti_patterns": [
+    "consumer gadget company",
+    "smart-home product",
+    "surveillance technology",
+    "for-profit data broker"
+  ],
+  "calibration_notes": "Strong fits: environmental-justice and open-science funders that accept nonprofit applicants and value community data ownership. Stretch-but-real: general climate/tech funders where we frame as open infrastructure. Fast-pass: funders requiring an academic PI, proprietary IP, or paying customers."
+}

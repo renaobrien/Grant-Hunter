@@ -1,0 +1,36 @@
+name: Jobs runner (drafts + deadlines)
+
+# Drains the `jobs` work queue (narrative drafts) and sweeps grant deadlines.
+# Zero-hosting: no server, it just runs in GitHub Actions on a half-hourly cron.
+# Add repo secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
+# (+ optional RESEND_API_KEY, TELEGRAM_BOT_TOKEN for notification delivery).
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # every 30 minutes
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+# Never let a manual run overlap the scheduled one (double drafts + double pings).
+concurrency:
+  group: jobs
+  cancel-in-progress: false
+
+jobs:
+  run-jobs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # a hung API call must not burn hours of Actions minutes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Run jobs
+        run: npm run jobs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

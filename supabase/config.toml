@@ -1,0 +1,14 @@
+# Supabase project config. `project_id` is set by `supabase link` during setup.
+project_id = "grants-platform"
+
+[db]
+major_version = 15
+
+# No Edge Functions: the agent engine runs as plain Node (engine/) via GitHub Actions.
+# Supabase provides Postgres + Auth only.
+
+[auth]
+# Single-org instance. Passwordless magic-link. Dashboard access is gated by the
+# `members` allowlist (RLS) — a signed-up user who isn't a member sees nothing,
+# so leaving signup enabled is safe. The owner's email is added to `members` by setup.
+enable_signup = true
