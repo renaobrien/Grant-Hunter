@@ -1,0 +1,421 @@
+<title>grants-platform dashboard preview</title>
+<style>
+  /* ===== ported from the real app: app/globals.css (design tokens + components) ===== */
+  :root{
+    --brand-primary:#3b5bdb; --brand-accent:#1d9e75; --brand-bg:#f7f5f0;
+    --ink:#1c1d21; --ink-soft:#4a4d55; --ink-faint:#7c808a;
+    --line:#e4e2db; --line-soft:#efeee9; --surface:#fff; --surface-2:#faf9f5;
+    --tone-info:#2d6cdf; --tone-info-bg:#e8f0fd; --tone-good:#1d9e75; --tone-good-bg:#e5f5ee;
+    --tone-warn:#b7791f; --tone-warn-bg:#fbf1dd; --tone-bad:#c0392b; --tone-bad-bg:#fbe9e7;
+    --tone-muted:#6b7280; --tone-muted-bg:#eeedea;
+    --s1:4px; --s2:8px; --s3:16px; --s4:24px; --s5:32px; --s6:48px;
+    --radius:10px; --radius-sm:6px;
+    --shadow:0 1px 2px rgba(28,29,33,.05),0 2px 8px rgba(28,29,33,.05);
+    --shadow-lift:0 2px 4px rgba(28,29,33,.06),0 8px 24px rgba(28,29,33,.08);
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji";
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  .gp{font-family:var(--font);color:var(--ink);background:var(--brand-bg);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100%}
+  .gp a{color:var(--brand-primary);text-decoration:none}
+  .gp a:hover{text-decoration:underline}
+  .gp h1{font-size:1.5rem;margin:0 0 var(--s2);line-height:1.25;font-weight:650}
+  .gp h2{font-size:1.2rem;margin:0 0 var(--s2);line-height:1.25;font-weight:650}
+  .gp h3{font-size:1rem;margin:0 0 var(--s2);line-height:1.25;font-weight:650}
+  .gp p{margin:0 0 var(--s2)}
+  .gp :focus-visible{outline:2px solid var(--brand-primary);outline-offset:2px;border-radius:var(--radius-sm)}
+
+  /* preview banner */
+  .pv-banner{background:#1c1d21;color:#f7f5f0;font-size:.8rem;padding:var(--s2) var(--s3);text-align:center;letter-spacing:.01em}
+  .pv-banner b{color:#fff}
+  .pv-banner code{font-family:var(--mono);background:rgba(255,255,255,.12);padding:1px 5px;border-radius:4px;font-size:.85em}
+
+  /* top nav */
+  .app-nav{display:flex;align-items:center;gap:var(--s4);padding:0 var(--s3);height:56px;background:var(--surface);border-bottom:1px solid var(--line)}
+  .app-nav .brand{display:flex;align-items:center;gap:var(--s2);font-weight:700;color:var(--ink);font-size:1.02rem}
+  .app-nav .brand-dot{width:12px;height:12px;border-radius:3px;background:var(--brand-primary)}
+  .app-nav .nav-links{display:flex;gap:var(--s3);margin-left:auto}
+  .nav-btn{color:var(--ink-soft);font-weight:500;padding:var(--s1) 0;background:none;border:none;font:inherit;cursor:pointer;border-bottom:2px solid transparent}
+  .nav-btn:hover{color:var(--brand-primary)}
+  .nav-btn.active{color:var(--brand-primary);border-bottom-color:var(--brand-primary)}
+
+  /* health bar */
+  .health-bar{display:flex;flex-wrap:wrap;gap:var(--s1) var(--s3);padding:var(--s2) var(--s3);background:var(--surface-2);border-bottom:1px solid var(--line-soft);font-size:.82rem;color:var(--ink-faint)}
+  .health-bar strong{color:var(--ink-soft);font-weight:600}
+  .health-bar .health-sep{color:var(--line)}
+
+  main{max-width:1200px;margin:0 auto;padding:var(--s4) var(--s3) var(--s6)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:var(--s3)}
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s4);flex-wrap:wrap}
+  .stack{display:flex;flex-direction:column;gap:var(--s3)}
+  .row{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+  .muted{color:var(--ink-faint)}
+
+  /* board */
+  .board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);align-items:start}
+  .board-col{background:var(--surface-2);border:1px solid var(--line-soft);border-radius:var(--radius);padding:var(--s2);min-height:120px}
+  .board-col-head{display:flex;align-items:baseline;justify-content:space-between;padding:var(--s1) var(--s2) var(--s2)}
+  .board-col-head .col-title{font-weight:650;font-size:.9rem}
+  .board-col-head .col-count{color:var(--ink-faint);font-size:.8rem;font-variant-numeric:tabular-nums}
+  .board-col-body{display:flex;flex-direction:column;gap:var(--s2)}
+
+  .grant-card{display:block;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:var(--s2) var(--s3);color:inherit;cursor:pointer;transition:box-shadow .12s ease,transform .12s ease}
+  .grant-card:hover{box-shadow:var(--shadow-lift);transform:translateY(-1px)}
+  .gc-funder{font-weight:650;font-size:.95rem;color:var(--ink)}
+  .gc-program{color:var(--ink-soft);font-size:.85rem;margin-top:2px}
+  .gc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);margin-top:var(--s2);font-size:.8rem;color:var(--ink-faint)}
+  .gc-amount{font-weight:600;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .gc-scores{display:inline-flex;align-items:center;gap:var(--s1)}
+  .gc-score-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint)}
+  .gc-status-row{margin-top:var(--s2)}
+  .status-select{width:auto;max-width:100%;padding:var(--s1) var(--s2);font-size:.8rem;font-weight:550;border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line)}
+
+  /* chips */
+  .chip{display:inline-flex;align-items:center;gap:var(--s1);padding:2px 8px;border-radius:999px;font-size:.74rem;font-weight:600;line-height:1.4;white-space:nowrap;background:var(--tone-muted-bg);color:var(--tone-muted)}
+  .chip-neutral{background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--line)}
+  .chip-muted{background:var(--tone-muted-bg);color:var(--tone-muted)}
+  .chip-info{background:var(--tone-info-bg);color:var(--tone-info)}
+  .chip-good{background:var(--tone-good-bg);color:var(--tone-good)}
+  .chip-warn{background:var(--tone-warn-bg);color:var(--tone-warn)}
+  .chip-bad{background:var(--tone-bad-bg);color:var(--tone-bad)}
+  .chip-brand{background:color-mix(in srgb,var(--brand-primary) 12%,white);color:var(--brand-primary)}
+
+  /* pips */
+  .pips{display:inline-flex;gap:3px;align-items:center;vertical-align:middle}
+  .pip{width:8px;height:8px;border-radius:2px}
+  .pip-on{background:var(--brand-primary)}
+  .pip-off{background:var(--line)}
+
+  /* field rows */
+  .field-row{display:grid;grid-template-columns:170px 1fr;gap:var(--s3);padding:var(--s2) 0;border-bottom:1px solid var(--line-soft)}
+  .field-row:last-child{border-bottom:none}
+  .field-label{color:var(--ink-faint);font-size:.82rem;font-weight:500}
+  .field-value{color:var(--ink)}
+
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;gap:var(--s1);padding:var(--s2) var(--s3);border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:550;font-size:.88rem;cursor:pointer}
+  .btn:hover{background:var(--surface-2)}
+  .btn-primary{background:var(--brand-primary);border-color:var(--brand-primary);color:#fff}
+  .btn-primary:hover{background:color-mix(in srgb,var(--brand-primary) 88%,black)}
+  .btn-sm{padding:var(--s1) var(--s2);font-size:.8rem}
+  .btn[aria-pressed="true"]{background:var(--brand-primary);border-color:var(--brand-primary);color:#fff}
+
+  /* debate + detail */
+  .card-ethos{border-left:3px solid var(--brand-accent)}
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);margin-bottom:var(--s2)}
+  .card-head h2,.card-head h3{margin:0}
+  .transcript{margin-top:var(--s3)}
+  .transcript>summary{cursor:pointer;font-weight:600;font-size:.88rem;color:var(--ink-soft);margin-bottom:var(--s2)}
+  .debate-round{border:1px solid var(--line);border-radius:var(--radius-sm);padding:var(--s3);margin-bottom:var(--s3);background:var(--surface)}
+  .dr-head{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s2);font-weight:600}
+  .dr-col{margin-top:var(--s2)}
+  .dr-role{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);margin-bottom:var(--s1)}
+  .draft-body{background:var(--surface-2);border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:var(--s3);margin-top:var(--s2);line-height:1.6}
+  .mini-list{margin:var(--s1) 0 0;padding-left:var(--s3);color:var(--ink-soft);font-size:.88rem}
+  .mini-list li{margin-bottom:var(--s1)}
+  .prose{white-space:pre-wrap;margin:0}
+
+  /* rating */
+  .rate-btns{display:inline-flex;gap:var(--s1)}
+  .rate-btn{width:36px;height:36px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--surface);font:inherit;font-weight:600;cursor:pointer;color:var(--ink-soft)}
+  .rate-btn.sel{background:var(--brand-primary);border-color:var(--brand-primary);color:#fff}
+  .field{display:flex;flex-direction:column;gap:var(--s1);margin-bottom:var(--s3)}
+  .gp label{font-size:.85rem;font-weight:550;color:var(--ink-soft)}
+  .gp input,.gp select,.gp textarea{font:inherit;font-size:.9rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:var(--s2);width:100%}
+  .gp textarea{min-height:80px;resize:vertical}
+
+  /* voice preview + forms */
+  .voice-preview{font-family:var(--mono);font-size:.8rem;line-height:1.55;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:var(--s3);margin:var(--s2) 0 0;max-height:360px;overflow:auto;white-space:pre-wrap;word-break:break-word;color:var(--ink-soft)}
+  .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3)}
+  .field-hint{font-size:.78rem;color:var(--ink-faint)}
+  .swatch-row{display:flex;align-items:center;gap:var(--s2)}
+  .swatch{width:44px;height:38px;border-radius:var(--radius-sm);border:1px solid var(--line)}
+
+  /* channels */
+  .channel-row{border:1px solid var(--line);border-radius:var(--radius-sm);padding:var(--s3);background:var(--surface);margin-bottom:var(--s3)}
+  .channel-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);flex-wrap:wrap}
+  .toggle{display:inline-flex;align-items:center;gap:var(--s2);font-size:.85rem;color:var(--ink-soft)}
+
+  /* table */
+  .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}
+  .data-table{width:100%;border-collapse:collapse;font-size:.86rem}
+  .data-table thead th{text-align:left;font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);padding:var(--s2) var(--s3);border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface-2)}
+  .data-table tbody td{padding:var(--s2) var(--s3);border-bottom:1px solid var(--line-soft);vertical-align:top}
+  .data-table tbody tr:last-child td{border-bottom:none}
+  .data-table tbody tr:hover{background:var(--surface-2)}
+  .data-table .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .note-panel{margin-bottom:var(--s4)}
+  .note-panel code{font-family:var(--mono);font-size:.82rem;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:1px 5px}
+
+  .view{display:none}
+  .view.active{display:block}
+  .back-link{background:none;border:none;color:var(--brand-primary);font:inherit;cursor:pointer;padding:0;margin-bottom:var(--s2)}
+
+  @media (max-width:900px){.board{grid-template-columns:1fr}.field-row{grid-template-columns:1fr;gap:var(--s1)}.form-grid{grid-template-columns:1fr}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="gp">
+  <div class="pv-banner">
+    Static preview of the <b>grants-platform</b> dashboard · sample org: <b>Open Sensor Collective</b> · click the nav and the grant cards
+  </div>
+
+  <nav class="app-nav">
+    <span class="brand"><span class="brand-dot"></span> Open Sensor Collective</span>
+    <div class="nav-links">
+      <button class="nav-btn active" data-view="board">Board</button>
+      <button class="nav-btn" data-view="runs">Runs</button>
+      <button class="nav-btn" data-view="profile">Profile</button>
+      <button class="nav-btn" data-view="settings">Settings</button>
+    </div>
+  </nav>
+
+  <div class="health-bar">
+    <span>Last run: <strong>2 days ago</strong></span><span class="health-sep">·</span>
+    <span>Today: <strong>$1.84</strong> / $5.00 budget</span><span class="health-sep">·</span>
+    <span><strong>14</strong> grants tracked</span><span class="health-sep">·</span>
+    <span>Next discovery: <strong>Mon 8:00 UTC</strong></span>
+  </div>
+
+  <main>
+    <!-- ===================== BOARD ===================== -->
+    <section class="view active" id="view-board">
+      <div class="page-head"><h1>Pipeline</h1><span class="muted">8 open · rated grants feed the next run</span></div>
+      <div class="board">
+        <div class="board-col">
+          <div class="board-col-head"><span class="col-title">Searched</span><span class="col-count">3</span></div>
+          <div class="board-col-body">
+            <div class="grant-card" data-grant="mozilla">
+              <div class="gc-funder">EPA</div><div class="gc-program">Environmental Justice Government-to-Government</div>
+              <div class="gc-meta"><span class="gc-amount">$200K</span><span>·</span><span>2026-09-15</span></div>
+              <div class="gc-meta"><span class="gc-score-label">fit</span><span class="pips" data-pips="4"></span><span class="gc-score-label">ethos</span><span class="pips" data-pips="5"></span><span class="chip chip-good">pursue</span></div>
+            </div>
+            <div class="grant-card" data-grant="mozilla">
+              <div class="gc-funder">NSF</div><div class="gc-program">Civic Innovation Challenge</div>
+              <div class="gc-meta"><span class="gc-amount">$50K–$1M</span><span>·</span><span>2026-08-01</span></div>
+              <div class="gc-meta"><span class="gc-score-label">fit</span><span class="pips" data-pips="4"></span><span class="gc-score-label">ethos</span><span class="pips" data-pips="4"></span><span class="chip chip-good">pursue</span></div>
+            </div>
+            <div class="grant-card" data-grant="mozilla">
+              <div class="gc-funder">Patagonia</div><div class="gc-program">Environmental Grants</div>
+              <div class="gc-meta"><span class="gc-amount">$5K–$20K</span><span>·</span><span>rolling</span></div>
+              <div class="gc-meta"><span class="gc-score-label">fit</span><span class="pips" data-pips="3"></span><span class="gc-score-label">ethos</span><span class="pips" data-pips="4"></span><span class="chip chip-warn">maybe</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="board-col">
+          <div class="board-col-head"><span class="col-title">Active</span><span class="col-count">2</span></div>
+          <div class="board-col-body">
+            <div class="grant-card" data-grant="mozilla">
+              <div class="gc-funder">Mozilla Foundation</div><div class="gc-program">Technology Fund — open source</div>
+              <div class="gc-meta"><span class="gc-amount">$50K</span><span>·</span><span>2026-07-30</span></div>
+              <div class="gc-meta"><span class="gc-score-label">fit</span><span class="pips" data-pips="5"></span><span class="gc-score-label">ethos</span><span class="pips" data-pips="5"></span><span class="chip chip-good">pursue</span></div>
+              <div class="gc-status-row"><select class="status-select"><option>drafting</option><option>researching</option><option>found</option></select></div>
+            </div>
+            <div class="grant-card" data-grant="mozilla">
+              <div class="gc-funder">Sloan Foundation</div><div class="gc-program">Open Science / Better Software</div>
+              <div class="gc-meta"><span class="gc-amount">$75K</span><span>·</span><span>2026-10-01</span></div>
+              <div class="gc-meta"><span class="gc-score-label">fit</span><span class="pips" data-pips="4"></span><span class="gc-score-label">ethos</span><span class="pips" data-pips="5"></span><span class="chip chip-good">pursue</span></div>
+              <div class="gc-status-row"><select class="status-select"><option>researching</option><option>drafting</option></select></div>
+            </div>
+          </div>
+        </div>
+        <div class="board-col">
+          <div class="board-col-head"><span class="col-title">Pending</span><span class="col-count">1</span></div>
+          <div class="board-col-body">
+            <div class="grant-card" data-grant="mozilla">
+              <div class="gc-funder">Code for America</div><div class="gc-program">Community Fellowship</div>
+              <div class="gc-meta"><span class="gc-amount">$100K</span><span>·</span><span class="chip chip-info">submitted</span></div>
+              <div class="gc-meta"><span class="gc-score-label">fit</span><span class="pips" data-pips="4"></span><span class="gc-score-label">ethos</span><span class="pips" data-pips="4"></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="board-col">
+          <div class="board-col-head"><span class="col-title">Closed</span><span class="col-count">3</span></div>
+          <div class="board-col-body">
+            <div class="grant-card" data-grant="mozilla">
+              <div class="gc-funder">Google.org</div><div class="gc-program">AI for Social Good</div>
+              <div class="gc-meta"><span class="gc-amount">$250K</span><span>·</span><span class="chip chip-good">awarded</span></div>
+            </div>
+            <div class="grant-card" data-grant="mozilla">
+              <div class="gc-funder">Amazon</div><div class="gc-program">Smart Home Innovation Fund</div>
+              <div class="gc-meta"><span class="chip chip-bad">passed</span><span class="muted">rated 1/5 · misaligned</span></div>
+            </div>
+            <div class="grant-card" data-grant="mozilla">
+              <div class="gc-funder">Knight Foundation</div><div class="gc-program">Media (invite-only)</div>
+              <div class="gc-meta"><span class="chip chip-muted">discarded</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== GRANT DETAIL ===================== -->
+    <section class="view" id="view-grant">
+      <button class="back-link" data-view="board">← Back to board</button>
+      <div class="page-head">
+        <div><h1>Mozilla Foundation</h1><div class="muted">Technology Fund — open source · $50K · deadline 2026-07-30</div></div>
+        <span class="chip chip-good">pursue · high confidence</span>
+      </div>
+      <div class="stack">
+        <div class="card card-ethos">
+          <div class="card-head"><h3>Ethos alignment</h3><span class="row"><span class="pips" data-pips="5"></span><strong>5/5</strong></span></div>
+          <p class="muted" style="margin:0">Mozilla explicitly funds open-source public-interest technology and requires open licensing — a direct match for the collective's "open by default, community-owned data" ethos. No IP or exclusivity strings that would conflict.</p>
+        </div>
+
+        <div class="card">
+          <div class="field-row"><div class="field-label">Recommendation</div><div class="field-value"><span class="chip chip-good">pursue</span> &nbsp;fit 4/5 · confidence high</div></div>
+          <div class="field-row"><div class="field-label">Framing angle</div><div class="field-value">Open science infrastructure — open hardware + reproducible community monitoring</div></div>
+          <div class="field-row"><div class="field-label">Eligibility</div><div class="field-value">501(c)(3) eligible; no university PI required; global applicants accepted. ✓ clears all hard constraints.</div></div>
+          <div class="field-row"><div class="field-label">Blockers</div><div class="field-value muted">None. Deadline is ~3 weeks out — start the draft now.</div></div>
+          <div class="field-row"><div class="field-label">Links</div><div class="field-value"><a href="#">Program page ↗</a> &nbsp;·&nbsp; <a href="#">Application portal ↗</a></div></div>
+        </div>
+
+        <div class="card">
+          <h3>Why it survived — the agent debate</h3>
+          <p class="muted" style="font-size:.86rem">Every grant is proposed by a Finder, attacked by a Skeptic, and adjudicated by a Judge. The full transcript is kept so you can audit the call.</p>
+          <details class="transcript" open>
+            <summary>Round 1 — 1 candidate, 1 survivor</summary>
+            <div class="debate-round">
+              <div class="dr-head"><span class="chip chip-good">SURVIVES</span> Mozilla Technology Fund</div>
+              <div class="dr-col"><div class="dr-role">Finder — claim</div><div>Open-source tech foundation funding public-interest technology; $50K awards; deadline 2026-07-30 read off the program's own page. Strong open-source fit. fit 5/5.</div></div>
+              <div class="dr-col"><div class="dr-role">Skeptic — refutation attempt</div><div><span class="chip chip-good">survives</span> &nbsp;<em>kill-shot:</em> "Checked the funder page directly — deadline open, 501(c)(3) eligible, no academic-PI requirement. Could not refute eligibility or freshness." &nbsp;<span class="muted">eligibility ✓ · deadline ✓</span></div></div>
+              <div class="dr-col"><div class="dr-role">Judge — ruling</div><div>Survives. Eligibility + freshness clear, Finder & Skeptic agree → confidence high. Fit held at 4/5 (Finder's 5 lightly discounted; award size is modest). Ethos alignment 5/5.</div></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Draft application</h3><span class="chip chip-good">ready · 2 rounds</span></div>
+          <div class="draft-body prose">Open Sensor Collective builds open-source air- and water-quality sensors for rural communities that regulators overlook. We request $50,000 from the Mozilla Technology Fund to harden our open hardware reference design and publish the reproducible data pipeline that turns it into public, community-owned dashboards…
+
+<span class="muted">[draft continues — 4 paragraphs]</span></div>
+          <details class="transcript" style="margin-top:var(--s3)"><summary>Critic transcript (2 rounds)</summary>
+            <div class="debate-round">
+              <div class="dr-role">Round 1 — Critic</div>
+              <ul class="mini-list"><li><b>Issue:</b> claims "40 sensors deployed" — profile says ~40; hedge to "roughly 40" to stay defensible.</li><li><b>Suggestion:</b> lead with the open-licensing commitment; it's Mozilla's #1 priority.</li></ul>
+            </div>
+            <div class="debate-round">
+              <div class="dr-role">Round 2 — Critic</div>
+              <span class="chip chip-good">approved</span> <span class="muted">Claims now match the profile; open-source framing is front-loaded. Ready for human review.</span>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <h3>Rate this grant <span class="muted" style="font-weight:400;font-size:.85rem">— teaches the next run</span></h3>
+          <div class="field"><label>Your score</label>
+            <div class="rate-btns"><button class="rate-btn">1</button><button class="rate-btn">2</button><button class="rate-btn">3</button><button class="rate-btn sel">4</button><button class="rate-btn">5</button></div>
+          </div>
+          <div class="field"><label>Why (freeform — the agents read this verbatim)</label>
+            <textarea>Great open-source fit and we clearly qualify. Award is a bit small on its own — pursue but pair with a larger funder.</textarea></div>
+          <button class="btn btn-primary">Save rating</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PROFILE ===================== -->
+    <section class="view" id="view-profile">
+      <div class="page-head"><h1>Org profile</h1><span class="muted">the "voice" every agent reads</span></div>
+      <div class="stack">
+        <div class="card">
+          <div class="form-grid">
+            <div class="field"><label>Org name</label><input value="Open Sensor Collective"></div>
+            <div class="field"><label>Stage</label><input value="early operating — 2 pilots live"></div>
+            <div class="field"><label>Entity type</label><input value="501(c)(3) nonprofit"></div>
+          </div>
+          <div class="field"><label>One-liner</label><input value="a nonprofit building open-source environmental sensors for rural communities"></div>
+          <div class="field"><label>Mission</label><textarea>Put affordable, trustworthy air- and water-quality data in the hands of communities that regulators overlook.</textarea></div>
+          <div class="field"><label>Anti-patterns — never frame us as</label><textarea>consumer gadget company
+smart-home product
+surveillance technology
+for-profit data broker</textarea><span class="field-hint">One per line. This is the agents' do-not-surface list.</span></div>
+          <div class="row">
+            <div class="field" style="margin:0"><label>Brand primary</label><div class="swatch-row"><span class="swatch" style="background:#3b5bdb"></span><input value="#3B5BDB" style="width:120px"></div></div>
+            <div class="field" style="margin:0"><label>Brand accent</label><div class="swatch-row"><span class="swatch" style="background:#1d9e75"></span><input value="#1D9E75" style="width:120px"></div></div>
+          </div>
+          <div class="row" style="margin-top:var(--s3)"><button class="btn btn-primary">Save &amp; regenerate voice</button><span class="muted" style="font-size:.85rem">Saving re-renders the prompt below.</span></div>
+        </div>
+        <div class="card">
+          <h3>Compiled voice <span class="muted" style="font-weight:400;font-size:.85rem">— the exact prompt your agents run</span></h3>
+          <div class="voice-preview">You are the grants research agent for Open Sensor Collective. Open Sensor Collective is a nonprofit building open-source environmental sensors for rural communities.
+
+CURRENT STATE (be honest about this when evaluating fit):
+- Stage: early operating — 2 pilots live
+- Entity: 501(c)(3) nonprofit, United States (Oregon)
+
+ETHOS (weigh grant alignment against this):
+Open by default, community-owned data, rigor over hype…
+
+NEVER frame Open Sensor Collective as: consumer gadget company, smart-home product, surveillance technology, for-profit data broker.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SETTINGS ===================== -->
+    <section class="view" id="view-settings">
+      <div class="page-head"><h1>Settings</h1></div>
+      <div class="stack">
+        <div class="card">
+          <h3>Discovery &amp; budget</h3>
+          <div class="form-grid">
+            <div class="field"><label>Daily budget (USD)</label><input value="5"><span class="field-hint">Hard cap — runs stop when spent.</span></div>
+            <div class="field"><label>Rounds per run</label><input value="2"></div>
+            <div class="field"><label>Target survivors</label><input value="5"></div>
+          </div>
+          <div class="field"><label>Weekly schedule (read-only)</label><input value="0 12 * * 1  (Mondays 12:00 UTC)" disabled></div>
+          <span class="field-hint">The schedule lives in <code>.github/workflows/discovery.yml</code> — edit it there to change the cadence.</span>
+          <div style="margin-top:var(--s3)"><button class="btn btn-primary">Save settings</button></div>
+        </div>
+        <div class="card">
+          <h3>Notification channels <span class="muted" style="font-weight:400;font-size:.85rem">— pick any, or several</span></h3>
+          <div class="channel-row"><div class="channel-head"><span class="row"><span class="chip chip-brand">Slack</span> <span class="muted">webhook</span></span><label class="toggle"><input type="checkbox" checked style="width:auto"> enabled</label></div><div class="field" style="margin-top:var(--s2)"><input value="https://hooks.slack.com/services/•••••••"></div></div>
+          <div class="channel-row"><div class="channel-head"><span class="row"><span class="chip chip-info">Email</span> <span class="muted">Resend</span></span><label class="toggle"><input type="checkbox" checked style="width:auto"> enabled</label></div><div class="field" style="margin-top:var(--s2)"><input value="grants@opensensor.org, board@opensensor.org"></div></div>
+          <div class="channel-row"><div class="channel-head"><span class="row"><span class="chip chip-muted">Discord</span></span><label class="toggle"><input type="checkbox" style="width:auto"> off</label></div></div>
+          <div class="channel-row"><div class="channel-head"><span class="row"><span class="chip chip-muted">Telegram</span></span><label class="toggle"><input type="checkbox" style="width:auto"> off</label></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== RUNS ===================== -->
+    <section class="view" id="view-runs">
+      <div class="page-head"><h1>Runs</h1><span class="muted">every agent call, with cost</span></div>
+      <div class="card note-panel"><h3>Run discovery now</h3><p class="muted" style="margin:0">Trigger from GitHub → <b>Actions → Weekly grant discovery → Run workflow</b>, or locally with <code>npm run discover:manual</code>.</p></div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Agent</th><th>Trigger</th><th>Status</th><th>Started</th><th class="num">Dur</th><th class="num">Tokens</th><th class="num">Cost</th></tr></thead>
+        <tbody>
+          <tr><td>finder</td><td>scheduled</td><td><span class="chip chip-good">success</span></td><td>Mon 12:00</td><td class="num">42s</td><td class="num">38,204</td><td class="num">$0.71</td></tr>
+          <tr><td>skeptic</td><td>scheduled</td><td><span class="chip chip-good">success</span></td><td>Mon 12:01</td><td class="num">55s</td><td class="num">21,880</td><td class="num">$0.48</td></tr>
+          <tr><td>judge</td><td>scheduled</td><td><span class="chip chip-good">success</span></td><td>Mon 12:02</td><td class="num">31s</td><td class="num">14,552</td><td class="num">$0.39</td></tr>
+          <tr><td>drafter</td><td>scheduled</td><td><span class="chip chip-good">success</span></td><td>Mon 12:04</td><td class="num">48s</td><td class="num">9,110</td><td class="num">$0.18</td></tr>
+          <tr><td>critic</td><td>scheduled</td><td><span class="chip chip-good">success</span></td><td>Mon 12:05</td><td class="num">22s</td><td class="num">6,340</td><td class="num">$0.08</td></tr>
+          <tr><td>finder</td><td>manual</td><td><span class="chip chip-warn">running</span></td><td>just now</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+  </main>
+</div>
+
+<script>
+  (function(){
+    var root=document.currentScript.previousElementSibling; // .gp
+    function show(v){
+      root.querySelectorAll('.view').forEach(function(s){s.classList.toggle('active', s.id==='view-'+v)});
+      root.querySelectorAll('.nav-btn').forEach(function(b){b.classList.toggle('active', b.dataset.view===v)});
+      root.querySelector('main').scrollIntoView({block:'start'});
+    }
+    root.addEventListener('click',function(e){
+      var nav=e.target.closest('[data-view]');
+      if(nav){show(nav.dataset.view);return;}
+      var card=e.target.closest('.grant-card');
+      if(card && !e.target.closest('select')){show('grant');}
+      var rb=e.target.closest('.rate-btn');
+      if(rb){root.querySelectorAll('.rate-btn').forEach(function(x){x.classList.remove('sel')});rb.classList.add('sel');}
+    });
+    // render score pips
+    root.querySelectorAll('.pips').forEach(function(p){
+      var n=parseInt(p.dataset.pips||'0',10),html='';
+      for(var i=1;i<=5;i++){html+='<span class="pip '+(i<=n?'pip-on':'pip-off')+'"></span>';}
+      p.innerHTML=html;
+    });
+  })();
+</script>
