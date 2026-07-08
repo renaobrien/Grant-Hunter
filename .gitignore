@@ -20,3 +20,4 @@ supabase/.env
 # never commit service-account keys or secrets
 *service-account*.json
 *.pem
+.gstack/
