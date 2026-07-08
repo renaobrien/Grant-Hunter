@@ -3,20 +3,53 @@
 // The cookie bridge writes refreshed tokens to BOTH the request (so the same
 // request sees them) and the outgoing response (so the browser stores them).
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
+// No-login mode still routes a fresh instance to /onboarding until the org
+// profile is filled in - otherwise the agents have nothing to search on. We use
+// the service-role key here because there's no session to satisfy RLS.
+async function onboardingGateNoLogin(
+  request: NextRequest,
+): Promise<NextResponse> {
+  const { pathname } = request.nextUrl;
+  if (pathname === "/onboarding" || pathname.startsWith("/onboarding/")) {
+    return NextResponse.next({ request });
+  }
+  try {
+    const sb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } },
+    );
+    const { data } = await sb
+      .from("profile")
+      .select("onboarding_complete")
+      .eq("id", 1)
+      .maybeSingle();
+    if (!data?.onboarding_complete) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+  } catch {
+    // DB/table not ready - don't trap the user; let the page handle it.
+  }
+  return NextResponse.next({ request });
+}
+
 export async function middleware(request: NextRequest) {
-  // Login is OFF by default: skip the entire auth gate (no /login, no members
-  // check, no onboarding redirect). It only turns on when a public host sets
-  // REQUIRE_LOGIN=true. Keep this in sync with authDisabled() in
-  // lib/supabase/server.ts.
+  // Login is OFF by default: skip the auth gate (no /login, no members check).
+  // It only turns on when a public host sets REQUIRE_LOGIN=true. Keep this in
+  // sync with authDisabled() in lib/supabase/server.ts. We STILL run the
+  // onboarding gate so a fresh instance fills its org profile first.
   const loginRequired =
     process.env.REQUIRE_LOGIN === "true" ||
     process.env.AUTH_DISABLED === "false";
   if (!loginRequired) {
-    return NextResponse.next({ request });
+    return onboardingGateNoLogin(request);
   }
 
   let response = NextResponse.next({ request });

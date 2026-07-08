@@ -35,6 +35,13 @@ export interface ClaudeResponse {
 // echoing the assistant turn. Cap continuations so a pathological loop ends.
 const MAX_CONTINUATIONS = 4;
 
+// Strip em/en dashes from all model output so they never reach the compiled
+// profile, drafts, or UI. Safe to run before JSON.parse: dashes only ever
+// appear inside string values, never in JSON structure.
+function stripFancyDashes(s: string): string {
+  return s.replace(/\s*[—–]\s*/g, " - ");
+}
+
 let cachedClient: Anthropic | null = null;
 let cachedKey = "";
 function getClient(apiKey: string): Anthropic {
@@ -97,7 +104,7 @@ export async function callClaude(options: ClaudeOptions): Promise<ClaudeResponse
     messages.push({ role: "assistant", content: response.content });
   }
 
-  const text = textParts.join("\n");
+  const text = stripFancyDashes(textParts.join("\n"));
   if (!text.trim()) {
     throw new Error(
       `No text in API response (stop_reason: ${stopReason}). Model may have exhausted tool calls without a summary.`,
