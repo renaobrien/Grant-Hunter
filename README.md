@@ -12,10 +12,9 @@ This is the open-source, productized successor to a single-org grant bot. It reu
 
 ## How you run it
 
-Each organization runs its own private copy — one org per instance. You clone the
+Each organization runs its own private copy. You clone the
 repo, plug in your own accounts (Supabase for the database, an Anthropic key for the
-AI, plus any notification channels you want), and run it. Nobody else hosts it and
-nobody else can see your data.
+AI, plus any notification channels you want), and run it. 
 
 You can run the whole thing from your own computer — no GitHub account needed:
 
@@ -51,14 +50,14 @@ own machine is just friction). Add your **Anthropic key** in the app under **Set
 keys** — no config files to edit. (Login turns back on automatically when you host it
 publicly — see below.)
 
-Want it always online instead of on your laptop — so sign-in works from your phone and
+Want it always online instead of on your laptop, so sign-in works from your phone and
 grants get found even when your computer is off? Host it in ~15 minutes on Vercel (free
 tier): **[DEPLOY.md](DEPLOY.md)**. You paste the Supabase values into the host's UI, so
 there's no `npm run setup` and no `.env.local` at all.
 
 ## What it costs to run
 
-You bring your own accounts and pay your own usage — there's no vendor in the middle. For a
+You bring your own accounts and pay your own usage, there's no vendor in the middle. For a
 typical low-volume org (one weekly discovery run), realistic monthly cost is **≈ $0–15 plus
 your Anthropic usage**:
 
@@ -107,9 +106,9 @@ examples/                sample org profiles (reference only — not applied)
 
 ## Who can access it
 
-This is a private tool for one organization — there's no sign-up, no other tenants.
+This is a private tool for one organization. No sign-up, no other tenants.
 
-- **People** log into the dashboard with a magic link, but only if their email is on your **members allowlist** (you choose who's on it). Everyone else — and anyone not signed in — sees nothing. That's enforced in the database itself (Row-Level Security), not just hidden in the UI.
+- **People** log into the dashboard with a magic link, but only if their email is on your **members allowlist** (you choose who's on it). That's enforced in the database itself (Row-Level Security), not just hidden in the UI.
 - **The agents** (discovery, drafting, deadline sweeps) run in the background with a privileged server key, so they keep working regardless of who's logged in.
 
 Everything the agents know about your org lives in one **profile** record you fill in during onboarding — mission, what you do, what you're eligible for, what to avoid. Every agent reads that record before it acts. Swap the profile and the exact same code runs for a completely different organization — that's what makes it white-label.
