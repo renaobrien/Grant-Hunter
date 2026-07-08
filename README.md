@@ -18,18 +18,23 @@ AI, plus any notification channels you want), and run it.
 
 You can run the whole thing from your own computer - no GitHub account needed:
 
-Run these one line at a time (don't paste the whole block at once):
+**One-time setup** - run these once, in order, one line at a time (don't paste the whole
+block at once):
 
 ```bash
 git clone https://github.com/renaobrien/Grant-Hunter grants
 cd grants
-npm install
+npm install                                        # installs tsx, next, etc. Required first.
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF   # a short ID, NOT a URL - see note below
 npm run db:push    # create the database tables
-npm run setup      # your keys + who can log in + notifications → .env.local
+npm run setup      # writes .env.local with your keys - MUST run before `npm run dev`
 npm run onboard    # a short AI interview that builds your org profile
 ```
+
+> **Order matters.** `npm run setup` is what creates `.env.local`. If you run `npm run dev`
+> before it, the app has no keys and errors with "needs NEXT_PUBLIC_SUPABASE_URL...". And if
+> you see `tsx: command not found` or `next: command not found`, you skipped `npm install`.
 
 The `git clone` needs **no GitHub login or password** - this is a public repo. (If git
 prompts you for a username/password, you're on an old/private URL; use the URL above.)
@@ -40,10 +45,10 @@ under **Project Settings → General → Reference ID**. Paste just the ID - not
 New to this, or don't use Git? **[SETUP.md](SETUP.md)** has the full walkthrough,
 including a no-Git download option.
 
-Then use it:
+**Day to day** - once setup is done, these are all you use:
 
 ```bash
-npm run dev        # open the dashboard at http://localhost:3000
+npm run dev        # open the dashboard at http://localhost:3000 (needs setup done first)
 npm run discover   # find new grants now
 npm run jobs       # process drafts + send deadline reminders
 ```
