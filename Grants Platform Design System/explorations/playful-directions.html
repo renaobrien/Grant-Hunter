@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<title>Playful directions — pipeline board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesque:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ---- shared base (mirrors the real grants-platform tokens) ---- */
+  :root {
+    --brand-primary: #3b5bdb;
+    --brand-accent: #1d9e75;
+    --brand-bg: #f7f5f0;
+    --ink: #1c1d21; --ink-soft: #4a4d55; --ink-faint: #7c808a;
+    --line: #e4e2db; --line-soft: #efeee9; --surface: #fff; --surface-2: #faf9f5;
+    --tone-info:#2d6cdf; --tone-info-bg:#e8f0fd; --tone-good:#1d9e75; --tone-good-bg:#e5f5ee;
+    --tone-warn:#b7791f; --tone-warn-bg:#fbf1dd; --tone-bad:#c0392b; --tone-bad-bg:#fbe9e7;
+    --tone-muted:#6b7280; --tone-muted-bg:#eeedea;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #6b6a66; font-family: "Hanken Grotesque", sans-serif; }
+
+  .frame {
+    position: absolute; width: 1120px;
+    background: var(--brand-bg);
+    border-radius: 18px; overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.28);
+  }
+  .badge {
+    position: absolute; top: -46px; left: 0;
+    display: flex; align-items: baseline; gap: 12px;
+    color: #fff; font-family: "Hanken Grotesque", sans-serif;
+  }
+  .badge .id { font-weight: 800; font-size: 20px; background: #111; color:#fff; padding: 3px 12px; border-radius: 999px; }
+  .badge .nm { font-size: 15px; opacity: 0.92; }
+  .badge .ft { font-size: 13px; opacity: 0.62; }
+
+  /* chrome shared */
+  .nav { display:flex; align-items:center; gap:24px; height:56px; padding:0 20px; background:var(--surface); border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:center; gap:9px; font-weight:800; color:var(--ink); }
+  .brand .dot { width:14px; height:14px; border-radius:4px; background:var(--brand-primary); }
+  .nav .links { display:flex; gap:18px; margin-left:auto; color:var(--ink-soft); font-weight:600; font-size:14px; }
+  .nav .links a { color:var(--ink-soft); text-decoration:none; }
+  .nav .links a.on { color:var(--brand-primary); }
+  .health { display:flex; gap:18px; padding:9px 20px; background:var(--surface-2); border-bottom:1px solid var(--line-soft); font-size:13px; color:var(--ink-faint); }
+  .health strong { color:var(--ink-soft); }
+  .body { padding:22px 20px 30px; }
+  .phead { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; }
+  .phead .sub { color:var(--ink-faint); font-size:14px; }
+  .board { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; align-items:start; }
+  .col-body { display:flex; flex-direction:column; gap:10px; }
+  .funder { font-weight:700; color:var(--ink); }
+  .prog { color:var(--ink-soft); font-size:13px; margin-top:2px; }
+  .meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-top:10px; font-size:12px; color:var(--ink-faint); }
+  .amt { font-weight:700; color:var(--ink-soft); }
+  .pips { display:inline-flex; gap:3px; align-items:center; }
+  .scorelabel { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); }
+  .scores { display:inline-flex; align-items:center; gap:5px; }
+
+  /* =====================================================================
+     DIRECTION A — "Bricolage" : chunky, friendly, contemporary grotesque
+     ===================================================================== */
+  .dir-a { font-family:"Hanken Grotesque",sans-serif; }
+  .dir-a h1 { font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:34px; letter-spacing:-0.02em; margin:0 0 2px; color:var(--ink); }
+  .dir-a .brand { font-family:"Bricolage Grotesque",sans-serif; }
+  .dir-a .col-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .dir-a .col-title { font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:15px; background:var(--surface); border:1.5px solid var(--line); padding:4px 12px; border-radius:999px; color:var(--ink); }
+  .dir-a .col-count { font-weight:800; font-size:13px; color:#fff; background:var(--brand-primary); min-width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:0 7px; }
+  .dir-a .card { background:var(--surface); border:1.5px solid var(--line); border-radius:16px; padding:14px; box-shadow:0 2px 0 var(--line); transition:transform .12s ease, box-shadow .12s ease; }
+  .dir-a .card:hover { transform:translateY(-2px); box-shadow:0 6px 0 var(--brand-primary); }
+  .dir-a .funder { font-family:"Bricolage Grotesque",sans-serif; font-size:16px; }
+  .dir-a .chip { display:inline-flex; align-items:center; gap:5px; font-weight:700; font-size:12px; padding:3px 11px; border-radius:999px; }
+  .dir-a .pip { width:9px; height:9px; border-radius:999px; }
+  .dir-a .col.tint { background:color-mix(in srgb, var(--brand-primary) 5%, transparent); border-radius:16px; padding:8px; }
+
+  /* =====================================================================
+     DIRECTION B — "Instrument" : editorial serif, airy, sophisticated
+     ===================================================================== */
+  .dir-b { font-family:"Hanken Grotesque",sans-serif; }
+  .dir-b .brand-bg-override { }
+  .dir-b h1 { font-family:"Instrument Serif",serif; font-weight:400; font-size:44px; line-height:0.95; margin:0 0 4px; color:var(--ink); letter-spacing:-0.01em; }
+  .dir-b .phead .sub { font-style:italic; font-family:"Instrument Serif",serif; font-size:19px; color:var(--ink-faint); }
+  .dir-b .brand { font-family:"Instrument Serif",serif; font-size:20px; font-weight:400; }
+  .dir-b .col-head { display:flex; align-items:baseline; gap:8px; margin-bottom:14px; padding-bottom:8px; border-bottom:2px solid var(--ink); }
+  .dir-b .col-title { font-family:"Instrument Serif",serif; font-size:22px; font-weight:400; color:var(--ink); }
+  .dir-b .col-count { font-size:13px; color:var(--ink-faint); font-variant-numeric:tabular-nums; margin-left:auto; }
+  .dir-b .card { background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:15px; transition:box-shadow .15s ease; }
+  .dir-b .card:hover { box-shadow:0 8px 24px rgba(28,29,33,.1); }
+  .dir-b .funder { font-family:"Instrument Serif",serif; font-size:21px; font-weight:400; line-height:1.05; }
+  .dir-b .chip { display:inline-flex; align-items:center; font-weight:600; font-size:11px; letter-spacing:.03em; text-transform:uppercase; padding:3px 9px; border-radius:3px; border:1px solid currentColor; background:transparent !important; }
+  .dir-b .pip { width:14px; height:4px; border-radius:2px; }
+
+  /* =====================================================================
+     DIRECTION C — "Space" : techy, mono-labelled, sticker-bordered
+     ===================================================================== */
+  .dir-c { font-family:"Space Grotesk",sans-serif; }
+  .dir-c h1 { font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:32px; letter-spacing:-0.02em; margin:0 0 2px; color:var(--ink); }
+  .dir-c .brand { font-family:"Space Grotesk",sans-serif; font-weight:700; }
+  .dir-c .phead .sub, .dir-c .health, .dir-c .scorelabel, .dir-c .col-count { font-family:"JetBrains Mono",monospace; }
+  .dir-c .col-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .dir-c .col-title { font-family:"JetBrains Mono",monospace; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink); }
+  .dir-c .col-count { font-size:12px; color:var(--ink-faint); }
+  .dir-c .card { background:var(--surface); border:2px solid var(--ink); border-radius:10px; padding:13px; box-shadow:3px 3px 0 var(--ink); transition:transform .1s ease, box-shadow .1s ease; }
+  .dir-c .card:hover { transform:translate(-1px,-1px); box-shadow:5px 5px 0 var(--brand-primary); }
+  .dir-c .funder { font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:16px; }
+  .dir-c .chip { display:inline-flex; align-items:center; font-family:"JetBrains Mono",monospace; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.03em; padding:2px 8px; border-radius:5px; border:1.5px solid currentColor; }
+  .dir-c .amt { font-family:"JetBrains Mono",monospace; }
+  .dir-c .pip { width:9px; height:9px; border-radius:2px; }
+
+  /* chip tone fills (A + C use filled; B outlines via currentColor) */
+  .chip-good { background:var(--tone-good-bg); color:var(--tone-good); }
+  .chip-warn { background:var(--tone-warn-bg); color:var(--tone-warn); }
+  .chip-muted{ background:var(--tone-muted-bg); color:var(--tone-muted); }
+  .chip-info { background:var(--tone-info-bg); color:var(--tone-info); }
+  .chip-neutral { background:var(--surface-2); color:var(--ink-soft); }
+  .pip-on { background:var(--brand-primary); }
+  .pip-off { background:var(--line); }
+</style>
+</head>
+<body>
+
+<!-- ============ intro ============ -->
+<div style="position:absolute; left:40px; top:36px; width:900px; color:#fff; font-family:'Hanken Grotesque',sans-serif;">
+  <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:30px; letter-spacing:-0.02em;">Playful directions — pipeline board</div>
+  <div style="opacity:.8; font-size:15px; margin-top:8px; max-width:760px;">Same white-label board, three expressive treatments. Playfulness comes from <b>type + shape + chip/card character</b> — brand colors stay runtime-swappable and the board stays scannable. Pan right to compare. Reference the current build as <b>0</b>.</div>
+</div>
+
+<!-- ============ 0 · current (reference) ============ -->
+<div class="frame dir-b" id="frame0" style="left:40px; top:210px; width:1120px;">
+</div>
+
+<script>
+  // Sample grants (org-neutral) grouped by pipeline column
+  const COLS = [
+    { title:"Searched", items:[
+      { f:"Open Horizon Foundation", p:"Emerging Technology Fund", amt:"$150,000", dl:"Mar 1", fit:5, al:4, rec:["Pursue","good"] },
+    ]},
+    { title:"Active", items:[
+      { f:"Meridian Trust", p:"Public Interest Research", amt:"$75,000", dl:"Rolling", fit:4, al:4, rec:["Pursue","good"] },
+      { f:"Lattice Science Initiative", p:"Trustworthy Systems RFP", amt:"$300,000", dl:"May 15", fit:4, al:3, rec:["Maybe","warn"] },
+    ]},
+    { title:"Pending", items:[
+      { f:"Northwind Philanthropies", p:"Annual Open Call", amt:"$120,000", dl:"Jan 31", fit:4, al:4, rec:["Pursue","good"] },
+    ]},
+    { title:"Closed", items:[
+      { f:"The Aster Foundation", p:"Innovation Prize", amt:"$250,000", dl:"awarded", fit:5, al:5, rec:["Pursue","good"] },
+      { f:"Granite Community Fund", p:"Local Grants", amt:"$15,000", dl:"passed", fit:2, al:2, rec:["Pass","muted"] },
+    ]},
+  ];
+
+  function pips(n, dir) {
+    let s = '<span class="pips">';
+    for (let i=0;i<5;i++) s += `<span class="pip ${i<n?'pip-on':'pip-off'}"></span>`;
+    return s + '</span>';
+  }
+  function card(g, dir) {
+    return `<div class="card">
+      <div class="funder">${g.f}</div>
+      <div class="prog">${g.p}</div>
+      <div class="meta"><span class="amt">${g.amt}</span><span>${g.dl}</span></div>
+      <div class="meta">
+        <span class="scores"><span class="scorelabel">Fit</span>${pips(g.fit,dir)}</span>
+        <span class="scores"><span class="scorelabel">Align</span>${pips(g.al,dir)}</span>
+        <span class="chip chip-${g.rec[1]}">${g.rec[0]}</span>
+      </div>
+    </div>`;
+  }
+  function board(dir) {
+    const tint = dir==='dir-a' ? ' tint' : '';
+    return `<div class="board">` + COLS.map(c => `
+      <section class="col${tint}">
+        <div class="col-head"><span class="col-title">${c.title}</span><span class="col-count">${c.items.length}</span></div>
+        <div class="col-body">${c.items.map(g=>card(g,dir)).join('')}</div>
+      </section>`).join('') + `</div>`;
+  }
+  function screen(dir, orgName, navOn) {
+    return `
+      <div class="nav">
+        <span class="brand"><span class="dot"></span>${orgName}</span>
+        <span class="links"><a class="${navOn==='Board'?'on':''}">Board</a><a>Runs</a><a>Profile</a><a>Settings</a></span>
+      </div>
+      <div class="health"><span><strong>Last run:</strong> 2h ago</span><span>·</span><span><strong>Today:</strong> $1.20 / $5.00</span><span>·</span><span><strong>7</strong> grants tracked</span></div>
+      <div class="body">
+        <div class="phead"><div><h1>Pipeline</h1><div class="sub">7 grants across the board</div></div></div>
+        ${board(dir)}
+      </div>`;
+  }
+
+  document.getElementById('frame0').innerHTML = screen('dir-b','Grants','Board');
+</script>
+
+<!-- ============ frames A / B / C ============ -->
+<div class="frame dir-a" id="fA" style="left:40px;   top:830px;"></div>
+<div class="frame dir-b" id="fB" style="left:1220px; top:830px;"></div>
+<div class="frame dir-c" id="fC" style="left:2400px; top:830px;"></div>
+
+<div class="badge" style="left:40px;   top:784px;"><span class="id">A</span><span class="nm">Bricolage — chunky &amp; friendly</span><span class="ft">Bricolage Grotesque + Hanken · pill tags, round pips, hard-shadow lift</span></div>
+<div class="badge" style="left:1220px; top:784px;"><span class="id">B</span><span class="nm">Instrument — editorial serif</span><span class="ft">Instrument Serif + Hanken · ruled columns, ghost chips, bar pips</span></div>
+<div class="badge" style="left:2400px; top:784px;"><span class="id">C</span><span class="nm">Space — techy sticker</span><span class="ft">Space Grotesk + JetBrains Mono · mono labels, 2px borders, offset shadow</span></div>
+
+<!-- reference badge for frame 0 -->
+<div class="badge" style="left:40px; top:164px;"><span class="id">0</span><span class="nm">Current build (reference)</span><span class="ft">system font · the calm baseline you have now</span></div>
+
+<script>
+  document.getElementById('fA').innerHTML = screen('dir-a','Grants','Board');
+  document.getElementById('fB').innerHTML = screen('dir-b','Grants','Board');
+  document.getElementById('fC').innerHTML = screen('dir-c','Grants','Board');
+  // Frame 0 uses the current plain treatment: strip playful serif from the reference by neutralizing dir-b overrides
+  const f0 = document.getElementById('frame0');
+  f0.classList.remove('dir-b');
+  f0.style.fontFamily = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+  // rebuild frame 0 with plain styling inline
+  f0.innerHTML = screen('','Grants','Board');
+</script>
+
+<style>
+  /* frame 0 plain (current) look */
+  #frame0 h1 { font-size:24px; font-weight:650; margin:0 0 2px; color:var(--ink); }
+  #frame0 .sub { color:var(--ink-faint); font-size:14px; }
+  #frame0 .brand { font-weight:700; }
+  #frame0 .col-head { display:flex; align-items:baseline; justify-content:space-between; padding:4px 8px 8px; }
+  #frame0 .col-title { font-weight:650; font-size:14px; }
+  #frame0 .col-count { color:var(--ink-faint); font-size:13px; }
+  #frame0 .col { background:var(--surface-2); border:1px solid var(--line-soft); border-radius:10px; padding:8px; }
+  #frame0 .card { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:8px 12px; box-shadow:0 1px 2px rgba(28,29,33,.05),0 2px 8px rgba(28,29,33,.05); }
+  #frame0 .funder { font-weight:650; font-size:15px; }
+  #frame0 .chip { display:inline-flex; align-items:center; font-weight:600; font-size:12px; padding:2px 8px; border-radius:999px; }
+  #frame0 .pip { width:8px; height:8px; border-radius:2px; }
+</style>
+
+</body>
+</html>

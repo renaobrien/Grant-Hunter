@@ -1,0 +1,23 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Spacing scale" subtitle="8px scale with a 4px half-step — --s1 … --s6" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px 24px; background: var(--surface); font-family: var(--font); color: var(--ink); }
+  .row { display: flex; align-items: center; gap: 14px; padding: 6px 0; }
+  .bar { background: var(--brand-primary); height: 16px; border-radius: 3px; }
+  .name { font-family: var(--mono); font-size: 0.74rem; width: 56px; flex: 0 0 56px; }
+  .px { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+  <div class="row"><span class="name">--s1</span><span class="bar" style="width:4px"></span><span class="px">4px</span></div>
+  <div class="row"><span class="name">--s2</span><span class="bar" style="width:8px"></span><span class="px">8px</span></div>
+  <div class="row"><span class="name">--s3</span><span class="bar" style="width:16px"></span><span class="px">16px</span></div>
+  <div class="row"><span class="name">--s4</span><span class="bar" style="width:24px"></span><span class="px">24px</span></div>
+  <div class="row"><span class="name">--s5</span><span class="bar" style="width:32px"></span><span class="px">32px</span></div>
+  <div class="row"><span class="name">--s6</span><span class="bar" style="width:48px"></span><span class="px">48px</span></div>
+</body>
+</html>

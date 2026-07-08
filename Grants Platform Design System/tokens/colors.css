@@ -1,0 +1,33 @@
+/* grants-platform — color tokens
+   Source of truth: app/globals.css :root. Neutral, calm, credible.
+   Brand vars are the FALLBACK before onboarding; a running instance overrides
+   --brand-primary / --brand-accent / --brand-bg at layout time from the profile
+   row (inline style on a wrapper). Everything here must stay swappable. */
+
+:root {
+  /* brand (overridden per-instance from the profile row) */
+  --brand-primary: #3b5bdb;
+  --brand-accent: #1d9e75;
+  --brand-bg: #f7f5f0;
+
+  /* neutrals — warm-paper ink + line + surface ramp */
+  --ink: #1c1d21;
+  --ink-soft: #4a4d55;
+  --ink-faint: #7c808a;
+  --line: #e4e2db;
+  --line-soft: #efeee9;
+  --surface: #ffffff;
+  --surface-2: #faf9f5;
+
+  /* status tones — each a fg + bg pair */
+  --tone-info: #2d6cdf;
+  --tone-info-bg: #e8f0fd;
+  --tone-good: #1d9e75;
+  --tone-good-bg: #e5f5ee;
+  --tone-warn: #dd6b20;
+  --tone-warn-bg: #fdecd8;
+  --tone-bad: #c0392b;
+  --tone-bad-bg: #fbe9e7;
+  --tone-muted: #6b7280;
+  --tone-muted-bg: #eeedea;
+}

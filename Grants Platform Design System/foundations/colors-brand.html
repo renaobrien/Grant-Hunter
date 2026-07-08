@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Brand (swappable)" subtitle="--brand-primary / --brand-accent / --brand-bg — overridden per-instance" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px; background: var(--surface); font-family: var(--font); color: var(--ink); }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .sw { flex: 1 1 190px; }
+  .chip { height: 68px; border-radius: var(--radius); border: 1px solid var(--line); }
+  .name { font-size: 0.82rem; font-weight: 600; margin-top: 8px; }
+  .hex { font-family: var(--mono); font-size: 0.78rem; color: var(--ink-faint); }
+  .cap { font-size: 0.78rem; color: var(--ink-faint); margin-top: 14px; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="sw"><div class="chip" style="background:var(--brand-primary)"></div><div class="name">--brand-primary</div><div class="hex">#3b5bdb</div></div>
+    <div class="sw"><div class="chip" style="background:var(--brand-accent)"></div><div class="name">--brand-accent</div><div class="hex">#1d9e75</div></div>
+    <div class="sw"><div class="chip" style="background:var(--brand-bg)"></div><div class="name">--brand-bg</div><div class="hex">#f7f5f0</div></div>
+  </div>
+  <div class="cap">Fallback defaults. A running instance injects these three from the org profile row at layout time — the whole system must look right with any values.</div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Elevation" subtitle="Two soft, warm-neutral shadows — --shadow (rest) · --shadow-lift (hover)" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 28px 24px; background: var(--surface-2); font-family: var(--font); color: var(--ink); }
+  .row { display: flex; gap: 28px; }
+  .box { width: 190px; height: 74px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .name { font-family: var(--mono); font-size: 0.74rem; margin-top: 12px; }
+  .desc { font-size: 0.74rem; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div><div class="box" style="box-shadow:var(--shadow)"></div><div class="name">--shadow</div><div class="desc">Cards, tables, grant cards at rest</div></div>
+    <div><div class="box" style="box-shadow:var(--shadow-lift)"></div><div class="name">--shadow-lift</div><div class="desc">Grant card on hover (+ translateY -1px)</div></div>
+  </div>
+</body>
+</html>
