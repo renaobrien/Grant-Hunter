@@ -1,6 +1,6 @@
 # Setup — stand up your own instance (~15 min)
 
-You'll run your own private copy: your Supabase database, your Anthropic key, your deploy. Nothing is shared with anyone else.
+You'll run your own private copy: your Supabase database, your Anthropic key, running on your own machine (host it later if you want). Nothing is shared with anyone else.
 
 ## Prerequisites
 
@@ -99,23 +99,39 @@ The more specific your avoid-list, the less noise every future run produces. You
 refining it by rating grants 1–2 with a reason in the dashboard — that feeds back into the
 same list automatically.
 
-## 5. Turn on weekly discovery (no server needed)
+## 5. Run it
 
-Discovery runs as a **GitHub Action** (`.github/workflows/discovery.yml`) every Monday.
-In your repo → **Settings → Secrets and variables → Actions**, add:
+Everything runs from your own machine — no GitHub or hosting required:
+
+```bash
+npm run dev        # open the dashboard at http://localhost:3000
+npm run discover   # find new grants now
+npm run jobs       # process draft requests + send deadline reminders
+```
+
+Run `discover` / `jobs` whenever you want fresh results. That's a complete, working
+setup. The next two steps are **optional** — they just make it hands-off.
+
+## 6. (Optional) Run discovery on a schedule
+
+Want it to find grants automatically — even when your computer is off? Discovery and the
+jobs worker ship as **GitHub Actions** (`.github/workflows/`), turned **off by default**.
+To turn them on: in your repo → **Settings → Secrets and variables → Actions**, add
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `ANTHROPIC_API_KEY`
 
-You can also trigger it by hand from the **Actions** tab (or locally: `npm run discover:manual`).
+then uncomment the `schedule:` line in each workflow file. You can also trigger them by
+hand from the **Actions** tab.
 
 > Heads-up: GitHub disables scheduled workflows after 60 days of no repo activity — a
-> commit re-enables them. This is also a healthy "are you still using it?" signal.
+> commit re-enables them.
 
-## 6. Deploy the dashboard
+## 7. (Optional) Host the dashboard
 
-The dashboard is a standard Next.js app — deploy to **Vercel** (or Netlify / your own host):
+To reach the dashboard from anywhere (not just `localhost` on your machine), deploy it —
+it's a standard Next.js app, so **Vercel** (or Netlify / your own host) works:
 
 1. Import the repo in Vercel.
 2. Set env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
@@ -137,10 +153,3 @@ it's spent, the run stops and logs why, so a misconfiguration can't drain your a
 agent call is recorded in `agent_runs` with tokens, web searches, and estimated cost (rounded
 up), visible on the dashboard's Runs page. Tip: for your very first run, set
 `daily_budget_usd = 2` and `discovery_rounds = 1` in the `settings` table.
-
-## Local run of the engine
-
-```bash
-# export the three engine vars into your shell, then:
-npm run discover           # or: npm run discover:manual
-```

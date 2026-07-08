@@ -50,8 +50,8 @@ your Anthropic usage**:
 |---|---|---|
 | **Anthropic API** | The agents' Claude calls (the actual work) — Opus for the adversaries/drafter, Sonnet for search, plus web search | Pay-as-you-go. A weekly discovery run is typically **a few dollars/month**. A hard **daily budget cap** (`settings.daily_budget_usd`, default $5) stops runs before they overspend. |
 | **Supabase** | Postgres database + magic-link auth | **Free tier** covers this comfortably (2 free projects per org). A dedicated **paid project is ~$10/mo** if you're past the free tier or want it isolated. |
-| **Vercel** | Hosts the dashboard | **Free** (Hobby tier). |
-| **GitHub Actions** | Runs weekly discovery + the 30-min jobs worker — no server to keep alive | **Free** tier minutes cover it easily. |
+| **Vercel** | *(optional)* hosts the dashboard so it's reachable beyond `localhost` | **Free** (Hobby tier). |
+| **GitHub Actions** | *(optional)* runs discovery + the jobs worker on a schedule — no server to keep alive | **Free** tier minutes cover it easily. |
 | **Resend** (optional, email) | Email digests | **Free** tier = 100 emails/day. |
 | **Slack / Discord / Telegram** (optional) | Digests + alerts | **Free** (just a webhook or bot token). |
 
