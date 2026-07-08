@@ -7,9 +7,6 @@ import type { AgentRunRow, AgentRunStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const ACTIONS_URL =
-  "https://github.com/renaobrien/deus-ex-machina-meta/actions";
-
 const STATUS_TONE: Record<AgentRunStatus, ChipTone> = {
   running: "info",
   success: "good",
@@ -83,13 +80,10 @@ export default async function RunsPage() {
       <Card className="note-panel">
         <h3>Run discovery now</h3>
         <p>
-          Discovery runs automatically on a weekly schedule. To trigger a run by
-          hand, open the repo&apos;s{" "}
-          <a href={ACTIONS_URL} target="_blank" rel="noopener noreferrer">
-            GitHub Actions tab
-          </a>{" "}
-          and choose <code>Actions → Weekly grant discovery → Run workflow</code>
-          .
+          To find grants on demand, run <code>npm run discover</code> on the
+          computer where you set this up. If you chose cloud runs during setup,
+          you can also trigger <code>Weekly grant discovery</code> from your
+          repository&apos;s GitHub Actions tab.
         </p>
       </Card>
 

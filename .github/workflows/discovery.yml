@@ -1,13 +1,16 @@
 name: Weekly grant discovery
 
-# Runs the adversarial discovery loop (Finder -> Skeptic -> Judge) on a schedule.
-# This is the zero-hosting engine: no server to maintain, it just runs in GitHub.
-# Add repo secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY.
+# Runs the adversarial discovery loop (Finder -> Skeptic -> Judge).
+# Optional "Automatic (cloud)" mode. It is OFF by default so a fresh clone never
+# runs — and never emails failures — before you've set it up. To enable:
+#   1) add repo secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
+#   2) uncomment the `schedule:` block below
+# Prefer running locally instead? Use `npm run discover` — no GitHub needed.
 
 on:
-  schedule:
-    - cron: "0 12 * * 1" # Mondays 12:00 UTC — matches settings.weekly_cron default
-  workflow_dispatch: {} # allow manual runs from the Actions tab
+  # schedule:
+  #   - cron: "0 12 * * 1" # Mondays 12:00 UTC — matches settings.weekly_cron default
+  workflow_dispatch: {} # manual runs from the Actions tab (works without the schedule)
 
 # Never let a manual run overlap the scheduled one (double spend + duplicate debates).
 concurrency:
