@@ -77,22 +77,20 @@ section (in some dashboard versions the URL lives under **Data API** and the key
 
 | Setup prompts for… | In Supabase it's labeled… | Looks like |
 |---|---|---|
-| **Project URL** | **Project URL** | `https://yourref.supabase.co` |
+| **project ref** | **Reference ID** (Project Settings → General) — the same ID you used with `supabase link` | `njvrhzqehxqhbnlqyjag` (20 chars) |
 | **anon / public key** | **`anon` `public`** (a.k.a. **Publishable**) | long string starting `eyJ…` |
 | **service_role key** | **`service_role` `secret`** (a.k.a. **Secret**) — click **Reveal** | long string starting `eyJ…` |
 
-> **About the Project URL:** the real value ends in `.supabase.co` (e.g.
-> `https://yourref.supabase.co`). If you accidentally paste the **dashboard** address from
-> your browser bar (`https://supabase.com/dashboard/project/yourref`) or just the bare
-> **ref**, that's fine — setup detects the ref and builds the right URL for you, and prints
-> what it used. Only a value with no ref at all (like plain `https://supabase.com`) is
-> refused.
+> **About the project ref:** you already used it in step 2 (`supabase link --project-ref …`).
+> Setup just asks for that same 20-character ID and builds the `https://yourref.supabase.co`
+> URL itself. If you'd rather paste the full **Project URL** or even the **dashboard** URL
+> from your browser bar, that also works — setup pulls the ref out of whatever you give it.
+> Only a value with no ref (like plain `https://supabase.com`) is refused.
 >
-> Why it matters: a wrong origin makes sign-in and every data load fail with
+> Why it matters: a wrong value makes sign-in and every data load fail with
 > **`Unexpected token '<', "<!DOCTYPE"… is not valid JSON`** — the app fetched a web page
-> instead of your database. If you hit that, you set the URL before this auto-fix existed:
-> re-run `npm run setup` (or fix the `…SUPABASE_URL=` lines in `.env.local`) and restart
-> `npm run dev`.
+> instead of your database. If you hit that from an earlier attempt: re-run `npm run setup`
+> (or fix the `…SUPABASE_URL=` lines in `.env.local`) and restart `npm run dev`.
 
 > ⚠️ The **`service_role`** key is a **secret** — it bypasses all row-level security. It
 > only ever goes in your local `.env.local` (which is git-ignored) and, later, GitHub repo

@@ -95,7 +95,6 @@ async function main() {
   };
 
   console.log("\n— grants-platform setup —\n");
-  console.log("From your Supabase project (Project Settings, the API section):");
   {
     const cur = env.NEXT_PUBLIC_SUPABASE_URL;
     const shown = cur ? ` (current: ${cur})` : "";
@@ -104,7 +103,7 @@ async function main() {
       const raw =
         (
           await rl.question(
-            `Supabase Project URL — the dashboard URL or bare ref works too, we'll sort it out${shown}\n> `,
+            `Supabase project ref — the 20-char ID you used with 'supabase link' (a full URL works too)${shown}\n> `,
           )
         ).trim() ||
         cur ||
@@ -115,9 +114,7 @@ async function main() {
         continue;
       }
       url = r.url;
-      if (r.note === "dashboard")
-        console.log(`  → Using ${url} (pulled the ref out of the dashboard URL you pasted).`);
-      else if (r.note === "ref") console.log(`  → Using ${url}.`);
+      console.log(`  → Using ${url}`);
     }
     env.NEXT_PUBLIC_SUPABASE_URL = url;
     env.SUPABASE_URL = url;
