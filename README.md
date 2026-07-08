@@ -22,7 +22,7 @@ You can run the whole thing from your own computer — no GitHub account needed:
 Run these one line at a time (don't paste the whole block at once):
 
 ```bash
-git clone https://github.com/renaobrien/grants-platform grants
+git clone https://github.com/renaobrien/Grant-Hunter grants
 cd grants
 npm install
 npx supabase login
@@ -46,8 +46,10 @@ npm run discover   # find new grants now
 npm run jobs       # process drafts + send deadline reminders
 ```
 
-Once it's running, sign in with your owner email and add your **Anthropic key** in the app
-under **Settings → API keys** — no config files to edit.
+Running locally, it opens **straight to the dashboard — no login** (a sign-in wall on your
+own machine is just friction). Add your **Anthropic key** in the app under **Settings → API
+keys** — no config files to edit. (Login turns back on automatically when you host it
+publicly — see below.)
 
 Want it always online instead of on your laptop — so sign-in works from your phone and
 grants get found even when your computer is off? Host it in ~15 minutes on Vercel (free

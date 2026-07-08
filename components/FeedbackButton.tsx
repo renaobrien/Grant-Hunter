@@ -21,7 +21,7 @@ import { getConsoleText, consoleLineCount } from "@/lib/console-capture";
 type FeedbackType = "bug" | "idea" | "other";
 
 const FEEDBACK_REPO =
-  process.env.NEXT_PUBLIC_FEEDBACK_REPO || "renaobrien/grants-platform";
+  process.env.NEXT_PUBLIC_FEEDBACK_REPO || "renaobrien/Grant-Hunter";
 
 const TYPES: { value: FeedbackType; label: string }[] = [
   { value: "bug", label: "Bug" },

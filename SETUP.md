@@ -18,7 +18,7 @@ computer — the rest of this guide is identical either way.
 
 ### Option A — Download (no Git needed, easiest)
 
-1. Go to <https://github.com/renaobrien/grants-platform>.
+1. Go to <https://github.com/renaobrien/Grant-Hunter>.
 2. Click the green **Code** button → **Download ZIP**.
 3. Find the downloaded `.zip` (usually in your **Downloads** folder) and double-click it
    to unzip. You'll get a folder like `grants-platform-main`.
@@ -28,7 +28,7 @@ computer — the rest of this guide is identical either way.
 ### Option B — Git clone (if you already use Git)
 
 ```bash
-git clone https://github.com/renaobrien/grants-platform grants
+git clone https://github.com/renaobrien/Grant-Hunter grants
 ```
 
 > Replace the URL with your own fork if you made one.
@@ -101,7 +101,8 @@ section (in some dashboard versions the URL lives under **Data API** and the key
 > Newer Supabase dashboards may label these **Publishable** (= anon) and **Secret**
 > (= service_role). Use those if that's what you see.
 
-You'll also need the **email** you want to log in with (you become the **owner**).
+You'll also need the **email** you want as the **owner** (it tags your grant ratings, and
+becomes your login if you ever turn login on — locally the app runs with no sign-in).
 
 > **Anthropic API key — optional at this step.** Setup will offer to take it, but you can
 > just press Enter and add it later in the app under **Settings → API keys**. That's the

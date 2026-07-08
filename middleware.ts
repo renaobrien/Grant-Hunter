@@ -8,6 +8,13 @@ import { NextResponse, type NextRequest } from "next/server";
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 export async function middleware(request: NextRequest) {
+  // No-login mode (local self-host): skip the entire auth gate — no /login,
+  // no members check, no onboarding redirect. See AUTH_DISABLED in
+  // lib/supabase/server.ts. Never enable this on a public host.
+  if (process.env.AUTH_DISABLED === "true") {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

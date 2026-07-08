@@ -2,7 +2,7 @@ import "./globals.css";
 import type { ReactNode, CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, authDisabled } from "@/lib/supabase/server";
 import HealthHeader from "@/components/HealthHeader";
 import FeedbackButton from "@/components/FeedbackButton";
 import ConsoleCapture from "@/components/ConsoleCapture";
@@ -53,7 +53,9 @@ export default async function RootLayout({
 }: {
   children: ReactNode;
 }) {
-  const [brand, authed] = await Promise.all([loadBrand(), hasSession()]);
+  // In no-login mode there's no session, but the app is fully usable — show the nav.
+  const [brand, sessionAuthed] = await Promise.all([loadBrand(), hasSession()]);
+  const authed = authDisabled() || sessionAuthed;
 
   const brandVars: CSSProperties = {};
   if (brand?.brand_primary)

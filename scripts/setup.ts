@@ -129,11 +129,15 @@ async function main() {
   await ask("ANTHROPIC_API_KEY", "Anthropic API key (sk-ant-…, or Enter to skip)", false);
   let owner = "";
   while (!owner.includes("@")) {
-    owner = (await rl.question("\nYour email (the owner who can log into the dashboard)\n> ")).trim().toLowerCase();
-    if (!owner.includes("@")) console.log("  (a valid email is required — it's how you'll sign in)");
+    owner = (await rl.question("\nYour email (the owner — used to tag your ratings, and to log in if you ever turn login on)\n> ")).trim().toLowerCase();
+    if (!owner.includes("@")) console.log("  (a valid email is required)");
   }
   env.APP_BASE_URL = env.APP_BASE_URL || "http://localhost:3000";
   env.DAILY_BUDGET_USD = env.DAILY_BUDGET_USD || "5";
+  // Local self-host runs with no login by default — a sign-in wall on your own
+  // machine is just friction. Flip AUTH_DISABLED to "false" (or delete it) to
+  // require magic-link login; DEPLOY.md does that for public hosting.
+  env.AUTH_DISABLED = env.AUTH_DISABLED || "true";
 
   writeEnv(env);
   console.log(`\n✓ Wrote ${ENV_PATH}`);
@@ -244,7 +248,7 @@ async function main() {
   const hasAnthropic = Boolean((env.ANTHROPIC_API_KEY ?? "").trim());
   console.log(
     "\nSetup complete. Next:\n" +
-      "  1. npm run dev               # start the app, then sign in with your owner email\n" +
+      "  1. npm run dev               # opens the app at http://localhost:3000 — no login needed\n" +
       (hasAnthropic
         ? ""
         : "     ↳ In the app: Settings → API keys → paste your Anthropic key (sk-ant-…).\n") +
