@@ -53,7 +53,7 @@ export default async function RootLayout({
 }: {
   children: ReactNode;
 }) {
-  // In no-login mode there's no session, but the app is fully usable — show the nav.
+  // In no-login mode there's no session, but the app is fully usable - show the nav.
   const [brand, sessionAuthed] = await Promise.all([loadBrand(), hasSession()]);
   const authed = authDisabled() || sessionAuthed;
 

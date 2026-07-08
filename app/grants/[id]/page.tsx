@@ -263,7 +263,7 @@ export default async function GrantDetailPage({
   }));
 
   const title = grant.program_name
-    ? `${grant.funder} — ${grant.program_name}`
+    ? `${grant.funder} - ${grant.program_name}`
     : grant.funder;
 
   return (
@@ -285,13 +285,13 @@ export default async function GrantDetailPage({
       </div>
 
       <div className="stack">
-        {/* Ethos alignment — the trust anchor, kept at the top */}
+        {/* Ethos alignment - the trust anchor, kept at the top */}
         <Card className="card-ethos">
           <div className="card-head">
             <h2>Ethos alignment</h2>
             <span className="row">
               <ScorePips score={grant.alignment_score} />
-              <strong>{grant.alignment_score ?? "—"} / 5</strong>
+              <strong>{grant.alignment_score ?? "-"} / 5</strong>
             </span>
           </div>
           {grant.alignment_rationale ? (

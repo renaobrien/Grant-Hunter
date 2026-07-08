@@ -93,7 +93,7 @@ export default function SettingsForm({
         <textarea
           id="preference_summary"
           value={summary}
-          placeholder="Distilled guidance for the agents — what to favor, what to avoid."
+          placeholder="Distilled guidance for the agents - what to favor, what to avoid."
           onChange={(e) => setSummary(e.target.value)}
         />
       </div>

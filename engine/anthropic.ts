@@ -1,4 +1,4 @@
-// anthropic.ts — Claude wrapper built on the official SDK (@anthropic-ai/sdk),
+// anthropic.ts - Claude wrapper built on the official SDK (@anthropic-ai/sdk),
 // which gives us retries (429/5xx) and request timeouts for free. Adds:
 //   - pause_turn continuation (server-side web search can pause a long tool loop)
 //   - per-model web search tool versions
@@ -93,7 +93,7 @@ export async function callClaude(options: ClaudeOptions): Promise<ClaudeResponse
     stopReason = response.stop_reason ?? "";
 
     if (stopReason !== "pause_turn" || attempt >= MAX_CONTINUATIONS) break;
-    // Server paused mid tool loop — append the assistant turn as-is and resume.
+    // Server paused mid tool loop - append the assistant turn as-is and resume.
     messages.push({ role: "assistant", content: response.content });
   }
 

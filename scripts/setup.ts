@@ -1,4 +1,4 @@
-// setup.ts — guided self-host setup.
+// setup.ts - guided self-host setup.
 // Collects your keys, writes .env.local, verifies the database, and makes you the
 // owner. Then points you at `npm run onboard` and deploy. Safe to re-run.
 //
@@ -54,7 +54,7 @@ async function main() {
     let v = (await rl.question(`${label}${shown}\n> `)).trim();
     if (!v && cur) v = cur;
     if (required && !v) {
-      console.log("  (required — try again)");
+      console.log("  (required - try again)");
       return ask(key, label, required);
     }
     if (v) env[key] = v;
@@ -63,7 +63,7 @@ async function main() {
   // Turn whatever the user pastes for "Project URL" into the real origin,
   // https://<ref>.supabase.co. People routinely paste the DASHBOARD url (the
   // address in their browser: https://supabase.com/dashboard/project/<ref>) or
-  // just the bare 20-char ref — both contain the ref, so we EXTRACT it instead
+  // just the bare 20-char ref - both contain the ref, so we EXTRACT it instead
   // of rejecting. A wrong origin makes every auth/data call fetch HTML and fail
   // with "Unexpected token '<' … is not valid JSON", so this must be exact.
   const REF = /^[a-z0-9]{20}$/;
@@ -83,9 +83,9 @@ async function main() {
       };
     }
     const host = u.hostname.toLowerCase();
-    // Already a project origin (…supabase.co) — use it as-is.
+    // Already a project origin (…supabase.co) - use it as-is.
     if (host.endsWith(".supabase.co")) return { url: `https://${host}` };
-    // Dashboard URL — pull the ref out of /project/<ref>.
+    // Dashboard URL - pull the ref out of /project/<ref>.
     const fromPath = u.pathname.match(/project\/([a-z0-9]{20})/);
     if (fromPath) return { url: `https://${fromPath[1]}.supabase.co`, note: "dashboard" };
     return {
@@ -94,47 +94,61 @@ async function main() {
     };
   };
 
-  console.log("\n— Grant Hunter setup —\n");
+  console.log("\nGrant Hunter setup\n");
   {
-    const cur = env.NEXT_PUBLIC_SUPABASE_URL;
-    const shown = cur ? ` (current: ${cur})` : "";
+    // If `supabase link` already ran (step 2), reuse that project ref instead of
+    // making you type it a second time.
+    let linkedRef = "";
+    try {
+      linkedRef = readFileSync("supabase/.temp/project-ref", "utf8").trim();
+    } catch {
+      // not linked yet; we'll ask below
+    }
+
     let url: string | undefined;
-    while (!url) {
-      const raw =
-        (
-          await rl.question(
-            `Supabase project ref — the 20-char ID you used with 'supabase link' (a full URL works too)${shown}\n> `,
-          )
-        ).trim() ||
-        cur ||
-        "";
-      const r = deriveProjectUrl(raw);
-      if (!r.url) {
-        console.log(`  ✖ ${r.error ?? "Try again."}`);
-        continue;
+    if (REF.test(linkedRef)) {
+      url = `https://${linkedRef}.supabase.co`;
+      console.log(`Supabase project: ${url}  (from your 'supabase link')`);
+    } else {
+      const cur = env.NEXT_PUBLIC_SUPABASE_URL;
+      const shown = cur ? ` (current: ${cur})` : "";
+      while (!url) {
+        const raw =
+          (
+            await rl.question(
+              `Supabase project ref, the 20-char ID from 'supabase link' (a full URL works too)${shown}\n> `,
+            )
+          ).trim() ||
+          cur ||
+          "";
+        const r = deriveProjectUrl(raw);
+        if (!r.url) {
+          console.log(`  x ${r.error ?? "Try again."}`);
+          continue;
+        }
+        url = r.url;
+        console.log(`  Using ${url}`);
       }
-      url = r.url;
-      console.log(`  → Using ${url}`);
     }
     env.NEXT_PUBLIC_SUPABASE_URL = url;
     env.SUPABASE_URL = url;
   }
   await ask("NEXT_PUBLIC_SUPABASE_ANON_KEY", "Supabase anon/public key");
   await ask("SUPABASE_SERVICE_ROLE_KEY", "Supabase service_role key (secret)");
-  // Optional here — you can add it later in the dashboard (Settings → API keys).
+  // Optional here - you can add it later in the dashboard (Settings → API keys).
   console.log(
-    "\nAnthropic API key — the agents' AI. Optional now; you can add it in the\n" +
+    "\nAnthropic API key - the agents' AI. Optional now; you can add it in the\n" +
       "dashboard later (Settings → API keys). Press Enter to skip.",
   );
   await ask("ANTHROPIC_API_KEY", "Anthropic API key (sk-ant-…, or Enter to skip)", false);
   let owner = "";
   while (!owner.includes("@")) {
-    owner = (await rl.question("\nYour email (the owner — used to tag your ratings, and to log in if you ever turn login on)\n> ")).trim().toLowerCase();
+    owner = (await rl.question("\nYour email (the owner - used to tag your ratings, and to log in if you ever turn login on)\n> ")).trim().toLowerCase();
     if (!owner.includes("@")) console.log("  (a valid email is required)");
   }
   env.APP_BASE_URL = env.APP_BASE_URL || "http://localhost:3000";
   env.DAILY_BUDGET_USD = env.DAILY_BUDGET_USD || "5";
-  // Local self-host runs with no login by default — a sign-in wall on your own
+  // Local self-host runs with no login by default - a sign-in wall on your own
   // machine is just friction. Flip AUTH_DISABLED to "false" (or delete it) to
   // require magic-link login; DEPLOY.md does that for public hosting.
   env.AUTH_DISABLED = env.AUTH_DISABLED || "true";
@@ -149,11 +163,11 @@ async function main() {
   const { error: schemaErr } = await sb.from("profile").select("id").limit(1);
   if (schemaErr) {
     // We know the ref (it's the subdomain of the URL we just saved), so print
-    // the exact commands to run — no <placeholders> to fill in.
+    // the exact commands to run - no <placeholders> to fill in.
     const ref = new URL(env.SUPABASE_URL).hostname.split(".")[0];
     console.log(
       `\n⚠ The database schema isn't applied yet (couldn't read the 'profile' table).\n` +
-        "  Your keys ARE saved — just apply the schema, then re-run setup (it'll\n" +
+        "  Your keys ARE saved - just apply the schema, then re-run setup (it'll\n" +
         "  remember everything; press Enter through the prompts):\n\n" +
         `      npx supabase link --project-ref ${ref}\n` +
         "      npm run db:push\n" +
@@ -183,7 +197,7 @@ async function main() {
   }
 
   console.log(
-    "\nNotifications — where should digests + alerts go?\n" +
+    "\nNotifications - where should digests + alerts go?\n" +
       "  1 = Slack   2 = Email   3 = Telegram   4 = Discord",
   );
   const picks = new Set(
@@ -197,12 +211,12 @@ async function main() {
   if (picks.has("1")) {
     const url = (await rl.question("\nSlack Incoming Webhook URL\n> ")).trim();
     if (url) await upsertChannel("slack", { webhook_url: url });
-    else console.log("  (no URL entered — skipping Slack)");
+    else console.log("  (no URL entered - skipping Slack)");
   }
   if (picks.has("4")) {
     const url = (await rl.question("\nDiscord Webhook URL\n> ")).trim();
     if (url) await upsertChannel("discord", { webhook_url: url });
-    else console.log("  (no URL entered — skipping Discord)");
+    else console.log("  (no URL entered - skipping Discord)");
   }
   if (picks.has("3")) {
     const token = (await rl.question("\nTelegram bot token (from @BotFather)\n> ")).trim();
@@ -212,7 +226,7 @@ async function main() {
       envChanged = true;
     }
     if (chatId) await upsertChannel("telegram", { chat_id: chatId });
-    else console.log("  (no chat_id entered — skipping Telegram)");
+    else console.log("  (no chat_id entered - skipping Telegram)");
   }
   if (picks.has("2")) {
     const recipients = (await rl.question("\nEmail recipients (comma-separated)\n> "))
@@ -235,7 +249,7 @@ async function main() {
       envChanged = true;
     }
     if (recipients.length) await upsertChannel("email", { recipients, from });
-    else console.log("  (no recipients entered — skipping Email)");
+    else console.log("  (no recipients entered - skipping Email)");
   }
 
   if (envChanged) {
@@ -248,16 +262,16 @@ async function main() {
   const hasAnthropic = Boolean((env.ANTHROPIC_API_KEY ?? "").trim());
   console.log(
     "\nSetup complete. Next:\n" +
-      "  1. npm run dev               # opens the app at http://localhost:3000 — no login needed\n" +
+      "  1. npm run dev               # opens the app at http://localhost:3000 - no login needed\n" +
       (hasAnthropic
         ? ""
         : "     ↳ In the app: Settings → API keys → paste your Anthropic key (sk-ant-…).\n") +
       "  2. Finish onboarding in the browser (it builds your org profile), or run\n" +
       "     npm run onboard from the CLI.\n" +
-      "  3. npm run discover:manual   # first discovery run — spends a few dollars of API credit\n" +
+      "  3. npm run discover:manual   # first discovery run - spends a few dollars of API credit\n" +
       "  4. To run discovery automatically each week, add GitHub repo secrets\n" +
       "     SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (and ANTHROPIC_API_KEY if you\n" +
-      "     didn't set it in the dashboard) — see .github/workflows/discovery.yml.\n" +
+      "     didn't set it in the dashboard) - see .github/workflows/discovery.yml.\n" +
       "\nHosting this online instead of your laptop? See DEPLOY.md.\n",
   );
 }

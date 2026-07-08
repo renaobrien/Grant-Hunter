@@ -1,4 +1,4 @@
-// onboard.ts — AI-assisted onboarding. Interviews the org with a handful of
+// onboard.ts - AI-assisted onboarding. Interviews the org with a handful of
 // questions, then has Claude compile the answers into a structured `profile` row
 // (the white-label "voice"). Re-runnable; the profile is also editable in the
 // dashboard, and the same questions + compile power the web onboarding flow.
@@ -21,7 +21,7 @@ async function main() {
 
   const rl = createInterface({ input, output });
   console.log(
-    "\n— Onboarding —\nAnswer a few questions; Claude will compile them into your org profile.\n",
+    "\n- Onboarding -\nAnswer a few questions; Claude will compile them into your org profile.\n",
   );
   const answers: Record<string, string> = {};
   for (const [key, prompt] of ONBOARDING_QUESTIONS) {

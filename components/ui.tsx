@@ -1,4 +1,4 @@
-// Server-safe presentational primitives. No "use client" — these render on the
+// Server-safe presentational primitives. No "use client" - these render on the
 // server and are styled entirely via className hooks defined in app/globals.css.
 import type { ReactNode, CSSProperties } from "react";
 import type { GrantStatus } from "@/lib/types";
@@ -23,7 +23,7 @@ export function Card({
 }
 
 // ---------------------------------------------------------------------------
-// StatusChip — colored chip whose tone is derived from a grant status
+// StatusChip - colored chip whose tone is derived from a grant status
 // ---------------------------------------------------------------------------
 const STATUS_TONE: Record<GrantStatus, string> = {
   found: "neutral",
@@ -57,7 +57,7 @@ export function StatusChip({ status }: { status: GrantStatus }) {
 }
 
 // ---------------------------------------------------------------------------
-// Chip — generic labeled chip with an optional tone
+// Chip - generic labeled chip with an optional tone
 // ---------------------------------------------------------------------------
 export type ChipTone =
   | "neutral"
@@ -79,7 +79,7 @@ export function Chip({
 }
 
 // ---------------------------------------------------------------------------
-// EmptyState — every empty list must render one of these
+// EmptyState - every empty list must render one of these
 // ---------------------------------------------------------------------------
 export function EmptyState({
   title,
@@ -100,7 +100,7 @@ export function EmptyState({
 }
 
 // ---------------------------------------------------------------------------
-// FieldRow — labeled row for detail views
+// FieldRow - labeled row for detail views
 // ---------------------------------------------------------------------------
 export function FieldRow({
   label,
@@ -118,7 +118,7 @@ export function FieldRow({
 }
 
 // ---------------------------------------------------------------------------
-// ScorePips — 1..max filled/empty pips (fit, alignment, human score)
+// ScorePips - 1..max filled/empty pips (fit, alignment, human score)
 // ---------------------------------------------------------------------------
 export function ScorePips({
   score,
@@ -129,7 +129,7 @@ export function ScorePips({
 }) {
   const filled = Math.max(0, Math.min(max, Math.round(score ?? 0)));
   if (!score) {
-    return <span className="pips pips-empty">—</span>;
+    return <span className="pips pips-empty">-</span>;
   }
   return (
     <span className="pips" aria-label={`${filled} of ${max}`}>

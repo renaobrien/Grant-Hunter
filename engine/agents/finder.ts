@@ -1,4 +1,4 @@
-// Finder — proposes grant candidates via multi-angle web search. Ports the search
+// Finder - proposes grant candidates via multi-angle web search. Ports the search
 // approach from eos-grants/agents/digest.js. Generous by design; the Skeptic culls.
 
 import { callClaude, MODELS, parseJsonFromResponse } from "../anthropic";
@@ -18,7 +18,7 @@ export async function runFinder(opts: {
   preferenceContext: string;
   today: string;
   priorNotes?: string;
-  /** "Funder — Program" labels of grants already in the pipeline; don't re-propose. */
+  /** "Funder - Program" labels of grants already in the pipeline; don't re-propose. */
   exclusions?: string[];
   count?: number;
 }): Promise<{ candidates: Candidate[]; usage: AgentUsage }> {
@@ -27,12 +27,12 @@ export async function runFinder(opts: {
   const user = [
     `Today is ${opts.today}. Run grant discovery for this organization.`,
     opts.exclusions?.length
-      ? `ALREADY TRACKED — these are in our pipeline; do NOT re-propose them, find NEW opportunities:\n${opts.exclusions
+      ? `ALREADY TRACKED - these are in our pipeline; do NOT re-propose them, find NEW opportunities:\n${opts.exclusions
           .map((e) => `- ${e}`)
           .join("\n")}`
       : "",
     opts.priorNotes
-      ? `PRIOR ROUND FEEDBACK — search DIFFERENTLY to address these; do not re-propose what was already refuted:\n${opts.priorNotes}`
+      ? `PRIOR ROUND FEEDBACK - search DIFFERENTLY to address these; do not re-propose what was already refuted:\n${opts.priorNotes}`
       : "",
     `Find up to ${count} currently-open or upcoming opportunities that fit. Verify deadline, amount, and eligibility on each funder's own page.`,
     SCHEMA,

@@ -1,4 +1,4 @@
-// Judge — reconciles the Finder's claims and the Skeptic's refutations into a final
+// Judge - reconciles the Finder's claims and the Skeptic's refutations into a final
 // call per candidate, and scores ethos alignment (req #6). Owns fit + ethos; defers to
 // the Skeptic on eligibility + freshness (asymmetric tie-breaks in JUDGE_ROLE).
 
@@ -6,7 +6,7 @@ import { callClaude, MODELS, parseJsonFromResponse } from "../anthropic";
 import { renderVoice, JUDGE_ROLE } from "../render-profile";
 import type { AgentUsage, Candidate, JudgeRuling, Profile, SkepticVerdict } from "../types";
 
-const SCHEMA = `Return ONLY a JSON array of rulings — EXACTLY one per candidate, in the SAME ORDER as the candidates (INCLUDE non-survivors with survives=false so the debate is auditable). Each item exactly:
+const SCHEMA = `Return ONLY a JSON array of rulings - EXACTLY one per candidate, in the SAME ORDER as the candidates (INCLUDE non-survivors with survives=false so the debate is auditable). Each item exactly:
 {"survives": boolean, "funder": string, "program_name": string, "amount": string, "deadline": string,
  "fit_score": integer 1-5, "recommendation": "pursue"|"maybe"|"pass", "confidence": "low"|"medium"|"high",
  "alignment_score": integer 1-5, "alignment_rationale": string (one sentence on ethos fit),
@@ -37,7 +37,7 @@ export async function runJudge(opts: {
     userMessage: user,
     model: MODELS.opus,
     maxTokens: 12000,
-    // no web search — the Judge reasons over what Finder/Skeptic already gathered
+    // no web search - the Judge reasons over what Finder/Skeptic already gathered
   });
 
   const parsed = parseJsonFromResponse(res.text, res.stopReason);

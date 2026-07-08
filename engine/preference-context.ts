@@ -1,4 +1,4 @@
-// preference-context.ts — the teaching loop (req #3), single-org.
+// preference-context.ts - the teaching loop (req #3), single-org.
 // Generalizes eos-grants/lib/grants.js buildPreferenceContext():
 //   1) numeric buckets from human scores (proven), PLUS
 //   2) freeform rationale text appended verbatim so the agents learn *why*, PLUS
@@ -46,7 +46,7 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
   ]);
 
   const label = (g: { funder: string | null; program_name: string | null }) =>
-    `${g.funder ?? "Unknown"}${g.program_name ? ` — ${g.program_name}` : ""}`;
+    `${g.funder ?? "Unknown"}${g.program_name ? ` - ${g.program_name}` : ""}`;
 
   const sections: string[] = [];
 
@@ -87,18 +87,18 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
     .map((g) => `${label(g)} (${g.rejection_reason ?? "unspecified"})`);
 
   if (applied.length)
-    sections.push(`Grants we actually applied to — find more like these: ${applied.join(" | ")}`);
+    sections.push(`Grants we actually applied to - find more like these: ${applied.join(" | ")}`);
   if (liked.length) sections.push(`Strong fits we want more of: ${liked.join(" | ")}`);
   if (stale.length)
     sections.push(
-      `Stale listings — funder may still be worth pursuing if a new cycle opens: ${stale.join(" | ")}`,
+      `Stale listings - funder may still be worth pursuing if a new cycle opens: ${stale.join(" | ")}`,
     );
   if (hardIneligible.length)
     sections.push(
-      `Hard eligibility disqualifiers — do not re-surface these programs: ${hardIneligible.join(" | ")}`,
+      `Hard eligibility disqualifiers - do not re-surface these programs: ${hardIneligible.join(" | ")}`,
     );
   if (misaligned.length)
-    sections.push(`Poor mission fit — avoid similar program types: ${misaligned.join(" | ")}`);
+    sections.push(`Poor mission fit - avoid similar program types: ${misaligned.join(" | ")}`);
   if (other.length) sections.push(`Deprioritised for other reasons: ${other.join(" | ")}`);
 
   const freeform = ((ratings ?? []) as unknown as RatingRow[])
@@ -109,7 +109,7 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
       return `- ${g} (${r.score ?? "?"}/5): "${r.feedback!.trim()}"`;
     });
   if (freeform.length)
-    sections.push(`Reviewer rationale in their own words — weight this heavily:\n${freeform.join("\n")}`);
+    sections.push(`Reviewer rationale in their own words - weight this heavily:\n${freeform.join("\n")}`);
 
   return sections.length ? sections.join("\n\n") : NO_FEEDBACK;
 }

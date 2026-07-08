@@ -2,11 +2,11 @@ name: Jobs runner (drafts + deadlines)
 
 # Drains the `jobs` work queue (narrative drafts) and sweeps grant deadlines.
 # Optional "Automatic (cloud)" mode. It is OFF by default so a fresh clone never
-# runs — and never emails failures — before you've set it up. To enable:
+# runs - and never emails failures - before you've set it up. To enable:
 #   1) add repo secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
 #      (+ optional RESEND_API_KEY, TELEGRAM_BOT_TOKEN for notifications)
 #   2) uncomment the `schedule:` block below
-# Prefer running locally instead? Use `npm run jobs` — no GitHub needed.
+# Prefer running locally instead? Use `npm run jobs` - no GitHub needed.
 
 on:
   # schedule:

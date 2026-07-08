@@ -6,7 +6,7 @@
 --
 -- Access: the settings table is already members-only via RLS (m_settings), and
 -- this instance is single-org, so only your own members can read it. The app
--- never sends the key value to the browser — the Settings page shows only
+-- never sends the key value to the browser - the Settings page shows only
 -- whether a key is set, and the input is write-only.
 
 alter table settings add column if not exists anthropic_api_key text;

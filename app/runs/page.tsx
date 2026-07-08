@@ -1,4 +1,4 @@
-// Runs page — read-only history of agent_runs (discovery, drafting, etc.).
+// Runs page - read-only history of agent_runs (discovery, drafting, etc.).
 // Server Component. No PAT, no GitHub API calls: manual runs are triggered by
 // the operator from the repo's GitHub Actions tab.
 import { createClient } from "@/lib/supabase/server";
@@ -31,25 +31,25 @@ const DATE_FMT = new Intl.DateTimeFormat("en-US", {
 });
 
 function formatStarted(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   return `${DATE_FMT.format(d)} UTC`;
 }
 
 function formatDuration(ms: number | null): string {
-  if (ms == null) return "—";
+  if (ms == null) return "-";
   const s = ms / 1000;
   return s >= 100 ? `${Math.round(s)}s` : `${s.toFixed(1)}s`;
 }
 
 function formatTokens(n: number | null): string {
-  if (n == null) return "—";
+  if (n == null) return "-";
   return n.toLocaleString("en-US");
 }
 
 function formatCost(cents: number | null): string {
-  if (cents == null) return "—";
+  if (cents == null) return "-";
   return `$${(cents / 100).toFixed(2)}`;
 }
 
@@ -137,7 +137,7 @@ export default async function RunsPage() {
                           {truncate(run.error_message)}
                         </span>
                       ) : (
-                        <span className="muted">—</span>
+                        <span className="muted">-</span>
                       )}
                     </td>
                   </tr>

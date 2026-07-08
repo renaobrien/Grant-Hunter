@@ -1,15 +1,15 @@
-// load-env.ts — minimal .env.local loader for the CLI entry points
+// load-env.ts - minimal .env.local loader for the CLI entry points
 // (onboard, discover, jobs).
 //
 // Why this exists: Next.js auto-loads .env.local, but plain `tsx`/`node` do NOT.
 // Without this, `npm run onboard` (etc.) can't see the SUPABASE_URL / keys that
-// `npm run setup` just wrote, and dies with "Missing SUPABASE_URL …" — even
+// `npm run setup` just wrote, and dies with "Missing SUPABASE_URL …" - even
 // though the values are right there in .env.local.
 //
 // Rules:
 //   • A real environment variable ALWAYS wins. GitHub Actions / production set
 //     these directly and have no .env.local, so we never clobber them.
-//   • A missing .env.local is fine (that's the CI case) — do nothing.
+//   • A missing .env.local is fine (that's the CI case) - do nothing.
 //
 // Zero dependencies on purpose: this must run before anything else and never
 // be the reason setup fails.

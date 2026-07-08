@@ -1,4 +1,4 @@
-// notify.ts — the single notification dispatcher for the whole platform.
+// notify.ts - the single notification dispatcher for the whole platform.
 // One entrypoint: sendNotification(sb, event, subject, text). It loads every
 // enabled notification_channels row whose `events` array includes this event and
 // fans the message out to each channel (Slack/Discord webhooks, Telegram bot,
@@ -50,7 +50,7 @@ async function dispatchDiscord(cfg: Record<string, unknown>, text: string): Prom
 async function dispatchTelegram(cfg: Record<string, unknown>, text: string): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
-    console.error("[notify] telegram channel enabled but TELEGRAM_BOT_TOKEN is unset — skipping");
+    console.error("[notify] telegram channel enabled but TELEGRAM_BOT_TOKEN is unset - skipping");
     return;
   }
   const chatId = cfg.chat_id;
@@ -68,7 +68,7 @@ async function dispatchEmail(
 ): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error("[notify] email channel enabled but RESEND_API_KEY is unset — skipping");
+    console.error("[notify] email channel enabled but RESEND_API_KEY is unset - skipping");
     return;
   }
   const recipients = cfg.recipients;

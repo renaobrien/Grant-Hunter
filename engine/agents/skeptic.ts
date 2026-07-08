@@ -1,4 +1,4 @@
-// Skeptic — the red-team adversary. Tries to REFUTE each candidate on eligibility,
+// Skeptic - the red-team adversary. Tries to REFUTE each candidate on eligibility,
 // fit, and freshness. Adopts the contrarian framing from cultivator-map's critic-review.
 
 import { callClaude, MODELS, parseJsonFromResponse } from "../anthropic";
@@ -17,7 +17,7 @@ export async function runSkeptic(opts: {
 }): Promise<{ verdicts: SkepticVerdict[]; usage: AgentUsage }> {
   const system = [renderVoice(opts.profile), SKEPTIC_ROLE].join("\n\n");
   const user = [
-    "Here are the Finder's candidates as JSON. Try to REFUTE each one — assume it's wrong until the funder's own page proves otherwise.",
+    "Here are the Finder's candidates as JSON. Try to REFUTE each one - assume it's wrong until the funder's own page proves otherwise.",
     JSON.stringify(opts.candidates, null, 2),
     SCHEMA,
   ].join("\n\n");

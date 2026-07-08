@@ -36,7 +36,7 @@ async function main(): Promise<void> {
       const spentCents = await spentCentsToday(sb);
 
       const lines = recent.map((g) => {
-        const name = g.program_name ? ` — ${g.program_name}` : "";
+        const name = g.program_name ? ` - ${g.program_name}` : "";
         return `• ${g.funder ?? "Unknown funder"}${name} (fit ${g.fit_score ?? "?"}, ${
           g.amount || "unknown"
         }, deadline ${g.deadline || "unknown"})`;

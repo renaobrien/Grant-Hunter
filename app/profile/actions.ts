@@ -14,7 +14,7 @@ function lines(raw: string): string[] {
     .filter((l) => l.length > 0);
 }
 
-// Trim, or null when empty — nullable scalar text columns.
+// Trim, or null when empty - nullable scalar text columns.
 function nz(raw: string): string | null {
   const t = raw.trim();
   return t.length ? t : null;
@@ -45,7 +45,7 @@ export async function saveProfile(
     .map((c) => ({ label: c.label.trim(), detail: c.detail.trim() }))
     .filter((c) => c.label.length > 0 || c.detail.length > 0);
 
-  // Build the engine Profile object — this is exactly what renderVoice reads.
+  // Build the engine Profile object - this is exactly what renderVoice reads.
   const profile: Profile = {
     org_name: nz(p.org_name),
     one_liner: nz(p.one_liner),

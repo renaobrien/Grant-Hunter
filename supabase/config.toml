@@ -9,6 +9,6 @@ major_version = 15
 
 [auth]
 # Single-org instance. Passwordless magic-link. Dashboard access is gated by the
-# `members` allowlist (RLS) — a signed-up user who isn't a member sees nothing,
+# `members` allowlist (RLS) - a signed-up user who isn't a member sees nothing,
 # so leaving signup enabled is safe. The owner's email is added to `members` by setup.
 enable_signup = true

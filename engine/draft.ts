@@ -1,4 +1,4 @@
-// draft.ts — the Drafter <-> Critic drafting orchestrator.
+// draft.ts - the Drafter <-> Critic drafting orchestrator.
 // Loads the org profile + one grant, then loops up to 3 rounds of Drafter -> Critic,
 // persisting each round to draft_rounds, feeding the critique back into the next draft,
 // and stopping early when the Critic approves. Every agent call is logged to agent_runs

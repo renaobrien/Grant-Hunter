@@ -18,7 +18,7 @@ const RUN_MODES: {
     value: "github",
     title: "Automatic (recommended)",
     blurb:
-      "Your grant engine runs in the cloud on a schedule — even when your computer is off.",
+      "Your grant engine runs in the cloud on a schedule - even when your computer is off.",
     note: "Needs a free GitHub account and a ~2-minute one-time secret setup.",
   },
   {
@@ -31,7 +31,7 @@ const RUN_MODES: {
   {
     value: "manual",
     title: "Manually for now",
-    blurb: "Nothing runs on its own — you trigger a search whenever you want.",
+    blurb: "Nothing runs on its own - you trigger a search whenever you want.",
     note: "You can switch to automatic later in Settings.",
   },
 ];
@@ -98,13 +98,13 @@ export default function OnboardingFlow({ initialMode }: { initialMode: RunMode }
         })}
       </ol>
 
-      {/* Step 1 — interview */}
+      {/* Step 1 - interview */}
       {step === 1 && (
         <div className="card stack">
           <div>
             <h1>Tell us about your organization</h1>
             <p className="muted">
-              A few plain questions — we turn your answers into the profile your
+              A few plain questions - we turn your answers into the profile your
               grant agents search and write with. You can edit all of it later.
             </p>
           </div>
@@ -137,7 +137,7 @@ export default function OnboardingFlow({ initialMode }: { initialMode: RunMode }
 
           <div className="onb-actions">
             <span className="muted onb-hint">
-              {isPending ? "Compiling your profile with AI — this takes a few seconds…" : ""}
+              {isPending ? "Compiling your profile with AI - this takes a few seconds…" : ""}
             </span>
             <button
               className="btn btn-primary"
@@ -150,7 +150,7 @@ export default function OnboardingFlow({ initialMode }: { initialMode: RunMode }
         </div>
       )}
 
-      {/* Step 2 — run mode */}
+      {/* Step 2 - run mode */}
       {step === 2 && (
         <div className="card stack">
           <div>
@@ -201,7 +201,7 @@ export default function OnboardingFlow({ initialMode }: { initialMode: RunMode }
         </div>
       )}
 
-      {/* Step 3 — done + help */}
+      {/* Step 3 - done + help */}
       {step === 3 && (
         <div className="card stack">
           <div>
@@ -215,7 +215,7 @@ export default function OnboardingFlow({ initialMode }: { initialMode: RunMode }
               <p className="muted">
                 Hit the <strong>Feedback</strong> button in the bottom-right corner
                 on any page. It files a ticket (with a screenshot) straight to the
-                project — no email needed.
+                project - no email needed.
               </p>
             </div>
             <div className="onb-help-item">

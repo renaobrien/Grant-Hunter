@@ -5,10 +5,10 @@
 // token baked into every fork), it opens GitHub's own "New issue" page for the
 // target repo with the fields + console log pre-filled. The submitter files it
 // under their own GitHub login. The page screenshot is copied to their clipboard
-// so it's a single paste (⌘V) in the issue — GitHub hosts the image for free.
+// so it's a single paste (⌘V) in the issue - GitHub hosts the image for free.
 //
 // Target repo: NEXT_PUBLIC_FEEDBACK_REPO ("owner/repo"), default below. Public
-// by design — it's just a repo name, no secret.
+// by design - it's just a repo name, no secret.
 import {
   useState,
   useTransition,
@@ -89,7 +89,7 @@ export default function FeedbackButton() {
       });
       setShot(dataUrl);
     } catch {
-      setError("Auto-capture failed — upload or paste a screenshot instead.");
+      setError("Auto-capture failed - upload or paste a screenshot instead.");
     } finally {
       setCapturing(false);
     }
@@ -154,7 +154,7 @@ export default function FeedbackButton() {
     const shotLine =
       includeShot && shot
         ? shotCopied
-          ? "\n\n_📎 Screenshot is on your clipboard — paste it here with ⌘V / Ctrl+V._"
+          ? "\n\n_📎 Screenshot is on your clipboard - paste it here with ⌘V / Ctrl+V._"
           : "\n\n_📎 Attach your screenshot here (drag it in or paste)._"
         : "";
 

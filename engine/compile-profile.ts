@@ -11,7 +11,7 @@ You convert an organization's onboarding answers into a structured grant-seeking
 Output ONLY a JSON object with exactly these keys:
 {
   "org_name": string,
-  "one_liner": string,                 // "a nonprofit building X" — completes "ORG is ___"
+  "one_liner": string,                 // "a nonprofit building X" - completes "ORG is ___"
   "mission": string,
   "problem": string,                   // the core problem they solve
   "stage": string,                     // e.g. "pre-revenue", "early operating", "scaling"

@@ -1,10 +1,10 @@
 {
-  "_comment": "Example filled profile (fictional org) — a reference for writing your own. NOT loaded by setup; onboarding writes the real profile. Shows how the fields generalize beyond any one org.",
+  "_comment": "Example filled profile (fictional org) - a reference for writing your own. NOT loaded by setup; onboarding writes the real profile. Shows how the fields generalize beyond any one org.",
   "org_name": "Open Sensor Collective",
   "one_liner": "a nonprofit building open-source environmental sensors for rural communities",
   "mission": "Put affordable, trustworthy air- and water-quality data in the hands of communities that regulators overlook.",
   "problem": "Rural and low-income communities lack the monitoring infrastructure to detect pollution, so harms go undocumented and unaddressed.",
-  "stage": "early operating — two deployed pilots, seeking to scale hardware + data platform",
+  "stage": "early operating - two deployed pilots, seeking to scale hardware + data platform",
   "entity_type": "501(c)(3) nonprofit",
   "jurisdiction": "United States (Oregon)",
   "team_summary": "four staff: two hardware engineers, one community organizer, one data scientist",
@@ -18,10 +18,10 @@
   ],
   "ethos": "Open by default, community-owned data, and rigor over hype. We prioritize funders who respect community sovereignty over data and do not require exclusive IP.",
   "eligibility_constraints": [
-    { "label": "Entity", "detail": "501(c)(3) nonprofit — eligible for most foundation and government grants; for corporate/for-profit-only funds, check for a nonprofit track." },
+    { "label": "Entity", "detail": "501(c)(3) nonprofit - eligible for most foundation and government grants; for corporate/for-profit-only funds, check for a nonprofit track." },
     { "label": "Affiliation", "detail": "No university affiliation. Flag grants that require an academic PI unless a partner path exists." },
     { "label": "Geography", "detail": "US-based, Oregon-focused but can serve any US community. For place-based funders, check whether our region qualifies." },
-    { "label": "Open source", "detail": "Our hardware and data are open by default. Flag any grant that requires exclusive/proprietary outputs — likely a mismatch." }
+    { "label": "Open source", "detail": "Our hardware and data are open by default. Flag any grant that requires exclusive/proprietary outputs - likely a mismatch." }
   ],
   "min_amount": 10000,
   "max_amount": 500000,

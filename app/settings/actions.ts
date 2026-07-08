@@ -17,7 +17,7 @@ export interface SettingsValues {
 }
 
 // Upsert the settings singleton (id = 1). weekly_cron is intentionally NOT
-// written here — the schedule is owned by .github/workflows/discovery.yml.
+// written here - the schedule is owned by .github/workflows/discovery.yml.
 export async function saveSettings(vals: SettingsValues): Promise<ActionResult> {
   const budget = Number(vals.daily_budget_usd);
   const rounds = Number(vals.discovery_rounds);
@@ -58,7 +58,7 @@ export async function saveAnthropicKey(key: string): Promise<ActionResult> {
   if (trimmed && !trimmed.startsWith("sk-ant-")) {
     return {
       ok: false,
-      error: "That doesn't look like an Anthropic key — they start with 'sk-ant-'.",
+      error: "That doesn't look like an Anthropic key - they start with 'sk-ant-'.",
     };
   }
 

@@ -5,16 +5,16 @@ always up, magic-link sign-in works from any device, and weekly discovery runs
 on its own. The recommended host is **Vercel** (free Hobby tier is enough), but
 any Next.js host works.
 
-You never run `npm run setup` for an online install — instead of a `.env.local`
+You never run `npm run setup` for an online install - instead of a `.env.local`
 file, you paste the same values into the host's **Environment Variables** UI.
 
 ## What you need
 
 - The repo on **GitHub** (fork it, or push your copy).
-- A **Supabase** project — same as `SETUP.md` steps: create it, grab the
+- A **Supabase** project - same as `SETUP.md` steps: create it, grab the
   **project ref**, the **anon** key, and the **service_role** key.
 - A **Vercel** account (sign in with GitHub).
-- *(added later, in the app)* an **Anthropic API key** — you no longer set this
+- *(added later, in the app)* an **Anthropic API key** - you no longer set this
   at deploy time; you paste it on the **Settings → API keys** page after first
   sign-in.
 
@@ -76,7 +76,7 @@ So the magic-link email redirects back correctly:
 
 2. Open the magic link, and you're in.
 3. Go to **Settings → API keys** and paste your **Anthropic key** (`sk-ant-…`).
-   That's what the agents spend — no redeploy needed.
+   That's what the agents spend - no redeploy needed.
 4. Finish **onboarding** (it interviews you and builds your org profile).
 5. Turn on any notification channels under **Settings → Notifications**.
 
@@ -86,12 +86,12 @@ Discovery/jobs run via **GitHub Actions** (`.github/workflows/*.yml`), not
 Vercel. In your GitHub repo → **Settings → Secrets and variables → Actions**,
 add:
 
-- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — required.
-- `ANTHROPIC_API_KEY` — **only** if you did *not* set the key in the dashboard.
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` - required.
+- `ANTHROPIC_API_KEY` - **only** if you did *not* set the key in the dashboard.
   The engine reads the dashboard key first and falls back to this secret.
-- `RESEND_API_KEY`, `TELEGRAM_BOT_TOKEN` — only for those notification channels.
+- `RESEND_API_KEY`, `TELEGRAM_BOT_TOKEN` - only for those notification channels.
 
-That's it — your instance is live, self-updating (push to GitHub → Vercel
+That's it - your instance is live, self-updating (push to GitHub → Vercel
 redeploys), and runs discovery on schedule.
 
 ## Updating later

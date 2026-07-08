@@ -1,8 +1,8 @@
-// require-node.cjs — friendly Node-version gate.
+// require-node.cjs - friendly Node-version gate.
 //
 // This runs BEFORE anything else (on `npm install` via "preinstall", and before
 // every `npm run` script). It must therefore run on ancient Node too, so it uses
-// only the oldest, plainest JavaScript — no imports, no modern syntax.
+// only the oldest, plainest JavaScript - no imports, no modern syntax.
 //
 // Why it exists: the app uses features (e.g. node:readline/promises) that only
 // exist in Node 20+. Without this gate, an old-Node user just sees a cryptic
@@ -18,7 +18,7 @@ if (major < MIN_MAJOR) {
 
   console.error("");
   console.error(red + bold + "  ✖  This app needs Node " + MIN_MAJOR + " or newer." + reset);
-  console.error("     You're on " + process.version + " — that's too old.");
+  console.error("     You're on " + process.version + " - that's too old.");
   console.error("");
   console.error("  Upgrade Node, then run the same command again. Pick one:");
   console.error("");

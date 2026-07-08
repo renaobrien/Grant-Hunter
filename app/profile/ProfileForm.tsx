@@ -286,7 +286,7 @@ export default function ProfileForm({ profile }: { profile: ProfileRow | null })
 
       <Section
         title="Current state"
-        hint="Be honest — agents weigh fit against reality, not aspiration."
+        hint="Be honest - agents weigh fit against reality, not aspiration."
       >
         <div className="form-grid-2">
           <TextField
@@ -350,7 +350,7 @@ export default function ProfileForm({ profile }: { profile: ProfileRow | null })
 
       <Section
         title="Eligibility & constraints"
-        hint="Hard facts the agents reason from — they won't assume beyond these."
+        hint="Hard facts the agents reason from - they won't assume beyond these."
       >
         <label>Eligibility constraints</label>
         <span className="field-hint">
@@ -424,7 +424,7 @@ export default function ProfileForm({ profile }: { profile: ProfileRow | null })
 
       <Section
         title="Positioning"
-        hint="How to frame the org to funders — and how never to frame it."
+        hint="How to frame the org to funders - and how never to frame it."
       >
         <label>Framing angles</label>
         <span className="field-hint">
@@ -471,7 +471,7 @@ export default function ProfileForm({ profile }: { profile: ProfileRow | null })
           />
           <TextField
             label="Anti-patterns"
-            hint="One per line — framings the agents must never use."
+            hint="One per line - framings the agents must never use."
             value={state.anti_patterns}
             onChange={(v) => set("anti_patterns", v)}
             placeholder={"a for-profit startup\na consultancy"}
@@ -521,7 +521,7 @@ export default function ProfileForm({ profile }: { profile: ProfileRow | null })
         </button>
         {status === "ok" ? (
           <span className="form-msg form-msg-ok">
-            Saved — compiled voice regenerated.
+            Saved - compiled voice regenerated.
           </span>
         ) : null}
         {status === "err" ? (

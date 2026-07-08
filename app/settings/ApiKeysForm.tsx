@@ -3,8 +3,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { saveAnthropicKey } from "./actions";
 
-// Write-only key management. We never receive the stored key from the server —
-// only whether one is set — so we can't (and shouldn't) show it. The user types
+// Write-only key management. We never receive the stored key from the server - // only whether one is set - so we can't (and shouldn't) show it. The user types
 // a new value to set/replace it, or clears it to fall back to the env var.
 export default function ApiKeysForm({ hasKey }: { hasKey: boolean }) {
   const [value, setValue] = useState("");
@@ -37,7 +36,7 @@ export default function ApiKeysForm({ hasKey }: { hasKey: boolean }) {
         <label htmlFor="anthropic_api_key">
           Anthropic API key{" "}
           <span className="muted">
-            {configured ? "— configured ✓" : "— not set"}
+            {configured ? "- configured ✓" : "- not set"}
           </span>
         </label>
         <input

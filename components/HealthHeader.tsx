@@ -1,12 +1,12 @@
 // Thin health strip rendered under the nav on every page. Server component.
-// Every query is wrapped so a fresh/empty instance renders "—" rather than
+// Every query is wrapped so a fresh/empty instance renders "-" rather than
 // throwing. Shows: last run (relative), today's spend vs budget, grants tracked.
 import { createClient } from "@/lib/supabase/server";
 
 function relativeTime(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "—";
+  if (Number.isNaN(then)) return "-";
   const diff = Date.now() - then;
   if (diff < 0) return "just now";
   const min = Math.floor(diff / 60000);
@@ -60,9 +60,9 @@ export default async function HealthHeader() {
 
   const spentUsd = spentCents / 100;
   const spentStr = `$${spentUsd.toFixed(2)}`;
-  const budgetStr = budgetUsd == null ? "—" : `$${budgetUsd.toFixed(2)}`;
+  const budgetStr = budgetUsd == null ? "-" : `$${budgetUsd.toFixed(2)}`;
   const overBudget = budgetUsd != null && spentUsd > budgetUsd;
-  const grantStr = grantCount == null ? "—" : String(grantCount);
+  const grantStr = grantCount == null ? "-" : String(grantCount);
 
   return (
     <div className="health-bar">

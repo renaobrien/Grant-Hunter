@@ -32,7 +32,7 @@ export default function HumanNotes({
         <textarea
           id="human-notes"
           value={notes}
-          placeholder="Context, contacts, next steps — human-owned, never touched by the engine."
+          placeholder="Context, contacts, next steps - human-owned, never touched by the engine."
           onChange={(e) => {
             setNotes(e.target.value);
             setSaved(false);

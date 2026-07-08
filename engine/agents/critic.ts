@@ -1,4 +1,4 @@
-// Critic — red-teams a Drafter narrative for invented claims, poor funder-fit,
+// Critic - red-teams a Drafter narrative for invented claims, poor funder-fit,
 // missing stated requirements, and generic pitch-deck language. Returns a strict
 // approved/issues/suggestions verdict. Mirrors skeptic.ts.
 
@@ -39,7 +39,7 @@ export async function runCritic(opts: {
     userMessage: user,
     model: MODELS.opus,
     maxTokens: 4000,
-    // no web search — the critic reasons over the profile + grant brief + draft
+    // no web search - the critic reasons over the profile + grant brief + draft
   });
 
   // Safe defaults: a malformed / non-object response must NOT read as approved.
@@ -55,7 +55,7 @@ export async function runCritic(opts: {
       };
     }
   } catch {
-    // keep safe defaults (approved:false) — the loop will run another round
+    // keep safe defaults (approved:false) - the loop will run another round
   }
 
   return {

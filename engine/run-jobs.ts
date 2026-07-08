@@ -1,6 +1,6 @@
 // Entrypoint for the jobs runner. Two responsibilities per invocation:
-//   PART A — drain the `jobs` work queue (currently: narrative_draft -> runDraft).
-//   PART B — sweep tracked grants and fire deadline reminders at 14/7/3/1 days.
+//   PART A - drain the `jobs` work queue (currently: narrative_draft -> runDraft).
+//   PART B - sweep tracked grants and fire deadline reminders at 14/7/3/1 days.
 // Runs on the GitHub Actions cron ("*/30 * * * *") or locally via `npm run jobs`.
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
 //      (+ optional RESEND_API_KEY, TELEGRAM_BOT_TOKEN consumed by notify.ts).
@@ -41,7 +41,7 @@ async function dispatchJob(sb: SupabaseClient, apiKey: string, job: JobRow): Pro
   throw new Error(`unknown job type: ${job.type}`);
 }
 
-/** PART A — claim up to 10 queued jobs (oldest first) and run each. One failure
+/** PART A - claim up to 10 queued jobs (oldest first) and run each. One failure
  *  never aborts the loop; it's recorded on that job and we move on. */
 async function runQueuedJobs(
   sb: SupabaseClient,
@@ -81,7 +81,7 @@ async function runQueuedJobs(
   return { claimed: jobs.length, done, errored };
 }
 
-/** PART B — deadline sweep. Runs every invocation regardless of the queue. */
+/** PART B - deadline sweep. Runs every invocation regardless of the queue. */
 async function sweepDeadlines(sb: SupabaseClient): Promise<{ scanned: number; pinged: number }> {
   const { data, error } = await sb
     .from("grants")
@@ -115,7 +115,7 @@ async function sweepDeadlines(sb: SupabaseClient): Promise<{ scanned: number; pi
       : isHttp(g.source_url)
         ? g.source_url
         : "";
-    const subject = `Deadline in ${diff}d: ${g.funder} — ${g.program_name}`;
+    const subject = `Deadline in ${diff}d: ${g.funder} - ${g.program_name}`;
     const text = `Deadline ${raw}. ${url}`.trim();
 
     await sendNotification(sb, "deadline", subject, text);

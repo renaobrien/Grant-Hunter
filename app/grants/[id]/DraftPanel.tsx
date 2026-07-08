@@ -75,7 +75,7 @@ function DraftItem({ draft }: { draft: DraftWithRounds }) {
         <p className="muted">
           {draft.status === "ready"
             ? "Draft completed but no content was returned."
-            : "Generating — a draft is produced within ~30 min by the jobs worker."}
+            : "Generating - a draft is produced within ~30 min by the jobs worker."}
         </p>
       ) : null}
 
@@ -141,7 +141,7 @@ export default function DraftPanel({
         </button>
         {queued ? (
           <span className="muted">
-            Queued — a draft is generated within ~30 min by the jobs worker.
+            Queued - a draft is generated within ~30 min by the jobs worker.
           </span>
         ) : null}
         {error ? (

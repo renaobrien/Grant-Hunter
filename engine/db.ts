@@ -1,4 +1,4 @@
-// db.ts — service-role Supabase access for the engine: profile/settings loading,
+// db.ts - service-role Supabase access for the engine: profile/settings loading,
 // the daily budget cap, agent_runs logging, grant upsert, and debate writes.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -100,12 +100,12 @@ export async function loadSettings(sb: SupabaseClient): Promise<Settings> {
 }
 
 /** Cents already spent by agents today (via the SQL helper). Fails closed:
- * if the helper can't be read, agents must not run — the cap is a safety promise. */
+ * if the helper can't be read, agents must not run - the cap is a safety promise. */
 export async function spentCentsToday(sb: SupabaseClient): Promise<number> {
   const { data, error } = await sb.rpc("spent_cents_today");
   if (error) {
     throw new Error(
-      `spent_cents_today() failed (${error.message}) — cannot enforce the daily budget cap. ` +
+      `spent_cents_today() failed (${error.message}) - cannot enforce the daily budget cap. ` +
         "Check that supabase/migrations/0001_init.sql was applied.",
     );
   }

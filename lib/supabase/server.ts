@@ -13,7 +13,7 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 /**
  * No-login mode. When AUTH_DISABLED=true the app runs as a single user with no
- * sign-in — the default for a local self-host, where a login wall is just
+ * sign-in - the default for a local self-host, where a login wall is just
  * friction. `createClient()` then uses the service-role key so pages/actions
  * work without a session.
  *

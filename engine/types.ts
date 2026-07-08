@@ -10,7 +10,7 @@ export interface EligibilityConstraint {
   detail: string;
 }
 
-/** The single-org profile row — the white-label "voice". Maps 1:1 to the `profile` table. */
+/** The single-org profile row - the white-label "voice". Maps 1:1 to the `profile` table. */
 export interface Profile {
   org_name: string | null;
   one_liner: string | null;

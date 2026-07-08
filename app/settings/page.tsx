@@ -49,7 +49,7 @@ export default async function SettingsPage() {
   const settings = (settingsRes.data as SettingsRow | null) ?? null;
   const channels = (channelsRes.data as NotificationChannelRow[] | null) ?? [];
 
-  // Presence only — the key value itself is never passed to the client.
+  // Presence only - the key value itself is never passed to the client.
   const hasAnthropicKey = Boolean(settings?.anthropic_api_key);
 
   const cron = settings?.weekly_cron ?? DEFAULT_CRON;
@@ -70,7 +70,7 @@ export default async function SettingsPage() {
         <h2>API keys</h2>
         <p className="muted">
           The Anthropic key the agents spend. Set it here and you never need to
-          touch <code>.env.local</code> — it&rsquo;s stored on your own database.
+          touch <code>.env.local</code> - it&rsquo;s stored on your own database.
         </p>
         <ApiKeysForm hasKey={hasAnthropicKey} />
       </Card>
@@ -97,7 +97,7 @@ export default async function SettingsPage() {
           </span>
         </FieldRow>
         <p className="muted" style={{ marginTop: "var(--s3)", marginBottom: 0 }}>
-          Schedule lives in <code>.github/workflows/discovery.yml</code> — edit
+          Schedule lives in <code>.github/workflows/discovery.yml</code> - edit
           it there to change the cadence.
         </p>
       </Card>

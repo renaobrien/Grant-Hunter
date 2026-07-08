@@ -1,4 +1,4 @@
-// Drafter — writes the grant-application narrative for THIS org, in the funder's
+// Drafter - writes the grant-application narrative for THIS org, in the funder's
 // frame, anchored on the grant's framing angle. Uses the rendered profile as the
 // only source of truth (never invents facts). Prose out, no JSON. Mirrors finder.ts.
 
@@ -52,7 +52,7 @@ export async function runDrafter(opts: {
     "Write the grant-application narrative for the opportunity below. Anchor it on the framing angle and translate this org's real work into the funder's priorities and vocabulary.",
     `GRANT DETAILS:\n${renderGrantDetails(opts.grant)}`,
     opts.priorCritique
-      ? `REVISE — address this critique of your previous draft. Fix each issue without inventing new facts:\n${opts.priorCritique}`
+      ? `REVISE - address this critique of your previous draft. Fix each issue without inventing new facts:\n${opts.priorCritique}`
       : "",
     "Return the application narrative as prose. No preamble, no JSON, no meta-commentary.",
   ]
@@ -65,7 +65,7 @@ export async function runDrafter(opts: {
     userMessage: user,
     model: MODELS.opus,
     maxTokens: 8000,
-    // no web search — the draft is grounded in the profile + grant brief, not the live web
+    // no web search - the draft is grounded in the profile + grant brief, not the live web
   });
 
   return {

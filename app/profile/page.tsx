@@ -37,7 +37,7 @@ export default async function ProfilePage() {
         <pre className="voice-preview">
           {voice
             ? voice
-            : "No compiled voice yet — fill in the profile above and click Save to generate it."}
+            : "No compiled voice yet - fill in the profile above and click Save to generate it."}
         </pre>
       </div>
     </div>

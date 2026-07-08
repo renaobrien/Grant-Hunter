@@ -1,4 +1,4 @@
-// discovery.ts — the adversarial discovery orchestrator.
+// discovery.ts - the adversarial discovery orchestrator.
 // Runs N rounds of Finder -> Skeptic -> Judge, persists the full debate to
 // agent_debate, upserts survivors into grants, logs cost per agent, and enforces
 // the daily budget cap. Callable from the GitHub Action or the Node worker.
@@ -79,7 +79,7 @@ export async function runDiscovery(
 
   if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) <= 0) {
     summary.stopped = "daily budget already spent";
-    console.warn(`[discovery] ${summary.stopped} — not running.`);
+    console.warn(`[discovery] ${summary.stopped} - not running.`);
     return summary;
   }
 
@@ -96,7 +96,7 @@ export async function runDiscovery(
     // create grants, so rebuild each round). Prevents re-proposing tracked
     // grants and double-counting them toward the survivor target.
     const exclusions = index
-      .map((g) => `${g.funder ?? ""}${g.program_name ? ` — ${g.program_name}` : ""}`.trim())
+      .map((g) => `${g.funder ?? ""}${g.program_name ? ` - ${g.program_name}` : ""}`.trim())
       .filter(Boolean)
       .slice(0, 60);
 
@@ -115,7 +115,7 @@ export async function runDiscovery(
     );
     if (verdicts.length !== candidates.length) {
       console.warn(
-        `[discovery] skeptic returned ${verdicts.length} verdicts for ${candidates.length} candidates — order-based matching may be off.`,
+        `[discovery] skeptic returned ${verdicts.length} verdicts for ${candidates.length} candidates - order-based matching may be off.`,
       );
     }
 
@@ -172,7 +172,7 @@ export async function runDiscovery(
       .map((c, i) => ({ c, v: verdictFor(i) }))
       .filter((x) => x.v && x.v.verdict === "refuted")
       .slice(0, 8)
-      .map((x) => `- ${x.c.funder} — ${x.c.program_name}: ${x.v!.kill_shot}`);
+      .map((x) => `- ${x.c.funder} - ${x.c.program_name}: ${x.v!.kill_shot}`);
     priorNotes = refuted.length
       ? `Already refuted (do not re-propose; search new funders/angles):\n${refuted.join("\n")}`
       : undefined;
