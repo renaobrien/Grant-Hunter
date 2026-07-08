@@ -12,21 +12,33 @@ This is the open-source, productized successor to a single-org grant bot. It reu
 
 ## How you run it
 
-**One org per instance — you own it end to end.** Each user clones this repo and stands up their own copy: their own Supabase project, their own Anthropic / email / Telegram keys, their own deploy. There is no shared server and no vendor holding your data.
+Each organization runs its own private copy — one org per instance. You clone the
+repo, plug in your own accounts (Supabase for the database, an Anthropic key for the
+AI, plus any notification channels you want), and run it. Nobody else hosts it and
+nobody else can see your data.
 
-Use this repo as a template (GitHub → **Use this template**) or fork it, then:
+You can run the whole thing from your own computer — no GitHub account needed:
 
 ```bash
 git clone https://github.com/renaobrien/grants-platform && cd grants-platform
 npm install
-npx supabase link --project-ref <your-ref> && npm run db:push   # create the schema
-npm run setup     # your keys + owner allowlist + notification channel → .env.local
-npm run onboard   # AI interview → your org profile (the agents' "voice")
+npx supabase link --project-ref <your-ref> && npm run db:push   # create the database tables
+npm run setup      # your keys + who can log in + notifications → .env.local
+npm run onboard    # a short AI interview that builds your org profile
 ```
 
-Then add three GitHub repo secrets and weekly discovery runs on its own — no server.
-See **[SETUP.md](./SETUP.md)** for the full walkthrough (~15 minutes), including deploying
-the dashboard to Vercel.
+Then use it:
+
+```bash
+npm run dev        # open the dashboard at http://localhost:3000
+npm run discover   # find new grants now
+npm run jobs       # process drafts + send deadline reminders
+```
+
+Want it to find grants on a schedule without you lifting a finger — even when your
+computer is off? That part is optional and uses GitHub Actions as a free scheduler.
+See **[SETUP.md](./SETUP.md)** for turning that on, and for hosting the dashboard so
+it's always available.
 
 ## What it costs to run
 
@@ -49,7 +61,7 @@ so you can see exactly what you're spending on the dashboard's Runs page.
 ## Stack
 
 - **Next.js** (App Router) + **Supabase** (Postgres + Auth) — Supabase is just your database and login; no Deno / Edge Functions to manage.
-- The **agent engine is plain Node/TypeScript** (`engine/`, run via `tsx`), driven by a **GitHub Actions cron** — the zero-hosting pattern: discovery runs in GitHub on a schedule, no server to keep alive. An optional long-lived Node worker can run the on-demand drafting loop with lower latency.
+- The **agent engine is plain Node/TypeScript** (`engine/`, run via `tsx`) — run it yourself with `npm run discover` / `npm run jobs`, or, optionally, let a **GitHub Actions cron** run it on a schedule for you (off by default; turn it on in SETUP.md). No server to keep alive either way.
 - **Claude** (latest models) with web search. Notifications fan out to Slack / Discord / Telegram (bot API) / email (**Resend**) via one dispatcher.
 
 ## Layout
