@@ -23,7 +23,8 @@
     "@anthropic-ai/sdk": "^0.110.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.99.1",
-    "next": "16.2.3",
+    "modern-screenshot": "^4.7.0",
+    "next": "^16.2.10",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "resend": "^4.0.0"
