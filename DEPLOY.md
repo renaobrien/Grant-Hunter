@@ -45,11 +45,12 @@ npm run db:push
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your **anon / public** key (`eyJ…`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | your **service_role / secret** key (`eyJ…`) |
 | `APP_BASE_URL` | your site URL, e.g. `https://your-app.vercel.app` |
+| `REQUIRE_LOGIN` | `true` |
 
-> **Login stays ON for a public host.** Don't set `AUTH_DISABLED` here (locally it
-> defaults to `true` for a no-login experience; on the internet that would make your
-> instance open to anyone). Leaving it unset means magic-link sign-in is required, gated by
-> your members allowlist.
+> **`REQUIRE_LOGIN=true` is not optional for a public host.** Login is OFF by default (so
+> local self-hosting has no sign-in wall); on the internet that would leave your instance
+> open to anyone. Setting `REQUIRE_LOGIN=true` turns on magic-link sign-in, gated by your
+> members allowlist.
 
 > You may not know the final URL yet. Deploy once, copy the URL Vercel gives you,
 > then set `APP_BASE_URL` to it and redeploy. It only matters so the magic-link

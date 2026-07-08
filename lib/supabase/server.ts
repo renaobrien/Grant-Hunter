@@ -12,17 +12,20 @@ import { cookies } from "next/headers";
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 /**
- * No-login mode. When AUTH_DISABLED=true the app runs as a single user with no
- * sign-in - the default for a local self-host, where a login wall is just
- * friction. `createClient()` then uses the service-role key so pages/actions
- * work without a session.
+ * Login is OFF by default. A local self-host runs as a single user with no
+ * sign-in - a login wall on your own machine is just friction. `createClient()`
+ * then uses the service-role key so pages/actions work without a session.
  *
- * SECURITY: only ever turn this on for something you alone can reach (localhost).
- * On a public host it makes the whole app open to anyone. DEPLOY.md keeps login
- * ON for that reason.
+ * Turn login ON only for a public host by setting REQUIRE_LOGIN=true (DEPLOY.md
+ * does this). SECURITY: without it the whole app is open to anyone who can reach
+ * it - fine for localhost, not for the internet.
  */
 export function authDisabled(): boolean {
-  return process.env.AUTH_DISABLED === "true";
+  // Explicit opt-in to login for hosting. AUTH_DISABLED=false also forces it on,
+  // for anyone who set that earlier.
+  if (process.env.REQUIRE_LOGIN === "true") return false;
+  if (process.env.AUTH_DISABLED === "false") return false;
+  return true;
 }
 
 export async function createClient(): Promise<SupabaseClient> {

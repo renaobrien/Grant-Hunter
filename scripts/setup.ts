@@ -148,10 +148,8 @@ async function main() {
   }
   env.APP_BASE_URL = env.APP_BASE_URL || "http://localhost:3000";
   env.DAILY_BUDGET_USD = env.DAILY_BUDGET_USD || "5";
-  // Local self-host runs with no login by default - a sign-in wall on your own
-  // machine is just friction. Flip AUTH_DISABLED to "false" (or delete it) to
-  // require magic-link login; DEPLOY.md does that for public hosting.
-  env.AUTH_DISABLED = env.AUTH_DISABLED || "true";
+  // No login flag to set: login is OFF by default for local self-host. Public
+  // hosts turn it on with REQUIRE_LOGIN=true (see DEPLOY.md).
 
   writeEnv(env);
   console.log(`\n✓ Wrote ${ENV_PATH}`);

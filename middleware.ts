@@ -8,10 +8,14 @@ import { NextResponse, type NextRequest } from "next/server";
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 export async function middleware(request: NextRequest) {
-  // No-login mode (local self-host): skip the entire auth gate - no /login,
-  // no members check, no onboarding redirect. See AUTH_DISABLED in
-  // lib/supabase/server.ts. Never enable this on a public host.
-  if (process.env.AUTH_DISABLED === "true") {
+  // Login is OFF by default: skip the entire auth gate (no /login, no members
+  // check, no onboarding redirect). It only turns on when a public host sets
+  // REQUIRE_LOGIN=true. Keep this in sync with authDisabled() in
+  // lib/supabase/server.ts.
+  const loginRequired =
+    process.env.REQUIRE_LOGIN === "true" ||
+    process.env.AUTH_DISABLED === "false";
+  if (!loginRequired) {
     return NextResponse.next({ request });
   }
 
