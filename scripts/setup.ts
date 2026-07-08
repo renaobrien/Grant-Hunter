@@ -48,21 +48,61 @@ function writeEnv(env: Record<string, string>) {
 async function main() {
   const env = readEnv();
   const rl = createInterface({ input, output });
-  const ask = async (key: string, label: string, required = true) => {
+  const ask = async (
+    key: string,
+    label: string,
+    required = true,
+    validate?: (v: string) => string | null,
+  ) => {
     const cur = env[key];
     const shown = cur ? ` (current: ${cur.slice(0, 8)}…)` : "";
     let v = (await rl.question(`${label}${shown}\n> `)).trim();
     if (!v && cur) v = cur;
     if (required && !v) {
       console.log("  (required — try again)");
-      return ask(key, label, required);
+      return ask(key, label, required, validate);
+    }
+    if (v && validate) {
+      const err = validate(v);
+      if (err) {
+        console.log(`  ✖ ${err}`);
+        return ask(key, label, required, validate);
+      }
     }
     if (v) env[key] = v;
   };
 
+  // The "Project URL" (Supabase's own label) is e.g.
+  // https://abcdefghijklmnopqrst.supabase.co — NOT the dashboard URL and NOT
+  // the supabase.com marketing site. Wrong values here cause auth/data calls to
+  // fetch HTML and fail with "Unexpected token '<' … is not valid JSON".
+  const validateProjectUrl = (v: string): string | null => {
+    let u: URL;
+    try {
+      u = new URL(v);
+    } catch {
+      return "That isn't a URL. Paste your Project URL, e.g. https://yourref.supabase.co";
+    }
+    const host = u.hostname.toLowerCase();
+    if (host === "supabase.com" || host === "www.supabase.com" || u.pathname.includes("/dashboard/")) {
+      return "That's the Supabase website, not your project. Use Project Settings → API → Project URL (ends in .supabase.co).";
+    }
+    if (!host.endsWith(".supabase.co")) {
+      return "Doesn't look like a project URL. It should end in .supabase.co (e.g. https://yourref.supabase.co).";
+    }
+    return null;
+  };
+
   console.log("\n— grants-platform setup —\n");
   console.log("From your Supabase project (Project Settings → API):");
-  await ask("NEXT_PUBLIC_SUPABASE_URL", "Supabase Project URL (https://xxx.supabase.co)");
+  await ask(
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "Supabase Project URL (https://yourref.supabase.co)",
+    true,
+    validateProjectUrl,
+  );
+  // Normalize: strip any trailing slash so downstream URL joins stay clean.
+  env.NEXT_PUBLIC_SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "");
   env.SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL;
   await ask("NEXT_PUBLIC_SUPABASE_ANON_KEY", "Supabase anon/public key");
   await ask("SUPABASE_SERVICE_ROLE_KEY", "Supabase service_role key (secret)");

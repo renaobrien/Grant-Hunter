@@ -71,14 +71,23 @@ npm run db:push        # applies everything in supabase/migrations/
 
 ### Get your three Supabase values
 
-In your Supabase project, go to **Project Settings → API**. You need exactly three things
-from that page:
+In your Supabase project, open **Project Settings** (the gear icon) and find the **API**
+section (in some dashboard versions the URL lives under **Data API** and the keys under
+**API Keys** — same values, just split across two pages). You need exactly three things:
 
-| Setup prompts for… | On the API page it's labeled… | Looks like |
+| Setup prompts for… | In Supabase it's labeled… | Looks like |
 |---|---|---|
 | **Project URL** | **Project URL** | `https://yourref.supabase.co` |
-| **anon / public key** | Project API keys → **`anon` `public`** | long string starting `eyJ…` |
-| **service_role key** | Project API keys → **`service_role` `secret`** (click **Reveal**) | long string starting `eyJ…` |
+| **anon / public key** | **`anon` `public`** (a.k.a. **Publishable**) | long string starting `eyJ…` |
+| **service_role key** | **`service_role` `secret`** (a.k.a. **Secret**) — click **Reveal** | long string starting `eyJ…` |
+
+> ⚠️ **The Project URL must end in `.supabase.co`.** It is NOT `https://supabase.com`
+> (the marketing site) and NOT the dashboard address
+> (`https://supabase.com/dashboard/project/…`). If you paste the wrong one, sign-in and
+> every data load fail with **`Unexpected token '<', "<!DOCTYPE"… is not valid JSON`** —
+> that means the app fetched a web page instead of your database. (Setup now rejects the
+> wrong URL, but fix `.env.local` and restart `npm run dev` if you set it before this
+> check existed.)
 
 > ⚠️ The **`service_role`** key is a **secret** — it bypasses all row-level security. It
 > only ever goes in your local `.env.local` (which is git-ignored) and, later, GitHub repo
