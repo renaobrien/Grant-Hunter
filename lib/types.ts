@@ -141,6 +141,8 @@ export interface ProfileRow extends Profile {
 // ---------------------------------------------------------------------------
 // settings
 // ---------------------------------------------------------------------------
+export type RunMode = "github" | "local" | "manual";
+
 export interface SettingsRow {
   id: number;
   discovery_rounds: number;
@@ -148,6 +150,7 @@ export interface SettingsRow {
   daily_budget_usd: number;
   preference_summary: string | null;
   weekly_cron: string;
+  run_mode: RunMode;
   created_at: string;
   updated_at: string;
 }

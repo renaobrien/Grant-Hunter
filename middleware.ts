@@ -66,6 +66,31 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Onboarding gate: a member whose instance hasn't finished setup is sent to
+  // /onboarding first. A missing profile row (fresh instance) counts as not
+  // done. Wrapped so a pre-migration DB never hard-locks the whole app.
+  if (
+    user &&
+    !isPublic &&
+    pathname !== "/onboarding" &&
+    pathname !== "/no-access"
+  ) {
+    try {
+      const { data: profile } = await supabase
+        .from("profile")
+        .select("onboarding_complete")
+        .eq("id", 1)
+        .maybeSingle();
+      if (!profile?.onboarding_complete) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/onboarding";
+        return NextResponse.redirect(url);
+      }
+    } catch {
+      // DB/table not ready — don't trap the user; let the page handle it.
+    }
+  }
+
   return response;
 }
 
