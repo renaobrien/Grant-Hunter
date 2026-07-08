@@ -11,13 +11,40 @@ You'll run your own private copy: your Supabase database, your Anthropic key, ru
 - *(optional)* a channel to receive digests: a **Slack**/**Discord** webhook URL, a **Telegram**
   bot token, or a **Resend** API key for email. You can pick more than one, or skip and add later.
 
-## 1. Clone + install
+## 1. Get the code onto your computer
+
+Pick **one** of the two options below. Both leave you with a `grants` folder on your
+computer — the rest of this guide is identical either way.
+
+### Option A — Download (no Git needed, easiest)
+
+1. Go to <https://github.com/renaobrien/grants-platform>.
+2. Click the green **Code** button → **Download ZIP**.
+3. Find the downloaded `.zip` (usually in your **Downloads** folder) and double-click it
+   to unzip. You'll get a folder like `grants-platform-main`.
+4. Move that folder somewhere you'll remember (e.g. your Desktop) and, if you like, rename
+   it to `grants`.
+
+### Option B — Git clone (if you already use Git)
 
 ```bash
-git clone <your fork of this repo> grants
-cd grants
+git clone https://github.com/renaobrien/grants-platform grants
+```
+
+> Replace the URL with your own fork if you made one.
+
+### Then, either way — open a terminal in that folder and install
+
+You need a **terminal** (macOS: **Terminal** app; Windows: **PowerShell**). Open it, then
+move into the folder you just created and install the dependencies:
+
+```bash
+cd path/to/grants        # e.g. cd ~/Desktop/grants  (or the unzipped folder's name)
 npm install
 ```
+
+> Tip (macOS): type `cd ` (with a space), then drag the folder from Finder onto the
+> terminal window — it fills in the path for you. Press Enter.
 
 ## 2. Create the database
 
@@ -25,9 +52,16 @@ Link the repo to your Supabase project and push the schema:
 
 ```bash
 npx supabase login
-npx supabase link --project-ref <your-project-ref>
+npx supabase link --project-ref YOUR_PROJECT_REF   # your ref — a short ID, NOT a URL
 npm run db:push        # applies everything in supabase/migrations/
 ```
+
+> **What's a project ref?** Here "link" is a verb — the command connects this folder to
+> your Supabase project; it is **not** asking for a URL. `--project-ref` wants your
+> project's **ref**: a 20-character ID like `aussykjrxblarjllmdor`. Find it in your
+> project's URL — `https://supabase.com/dashboard/project/aussykjrxblarjllmdor` — or under
+> **Project Settings → General → Reference ID**. Paste just that ID: no `https://`, no
+> `.supabase.co`.
 
 > No Edge Functions to deploy — Supabase is just Postgres + Auth here.
 

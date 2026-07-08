@@ -19,13 +19,25 @@ nobody else can see your data.
 
 You can run the whole thing from your own computer — no GitHub account needed:
 
+Run these one line at a time (don't paste the whole block at once):
+
 ```bash
-git clone https://github.com/renaobrien/grants-platform && cd grants-platform
+git clone https://github.com/renaobrien/grants-platform grants
+cd grants
 npm install
-npx supabase link --project-ref <your-ref> && npm run db:push   # create the database tables
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF   # a short ID, NOT a URL — see note below
+npm run db:push    # create the database tables
 npm run setup      # your keys + who can log in + notifications → .env.local
 npm run onboard    # a short AI interview that builds your org profile
 ```
+
+`supabase link` connects this folder to your project — "link" is the verb, it's not
+asking for a URL. `YOUR_PROJECT_REF` is a short 20-character ID like `aussykjrxblarjllmdor`,
+found in your Supabase project's URL (`.../project/aussykjrxblarjllmdor`) or under
+**Project Settings → General → Reference ID**. Paste just that ID — no `https://`, no
+`.supabase.co` — in place of the whole word. (Downloading the ZIP instead of `git clone`
+works too — just unzip, `cd` in, and start from `npm install`.)
 
 Then use it:
 
