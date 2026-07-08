@@ -1,5 +1,0 @@
-/* grants-platform — webfonts (Direction C: "techy sticker")
-   Space Grotesk = display + body sans. JetBrains Mono = labels, meta, code.
-   Loaded from Google Fonts; @font-face rules resolve at consumer load time. */
-
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");

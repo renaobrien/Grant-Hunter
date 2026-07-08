@@ -1,9 +1,0 @@
-/* grants-platform design system — entry point.
-   Consumers link THIS one file. Import order: tokens first, then the component
-   and utility classes that consume them. Keep this file @import lines only. */
-
-@import "./tokens/fonts.css";
-@import "./tokens/colors.css";
-@import "./tokens/typography.css";
-@import "./tokens/spacing.css";
-@import "./app.css";
