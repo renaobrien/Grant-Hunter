@@ -67,13 +67,39 @@ npm run db:push        # applies everything in supabase/migrations/
 
 ## 3. Run setup
 
+`npm run setup` asks you to paste a few values. Grab them **before** you run it.
+
+### Get your three Supabase values
+
+In your Supabase project, go to **Project Settings → API**. You need exactly three things
+from that page:
+
+| Setup prompts for… | On the API page it's labeled… | Looks like |
+|---|---|---|
+| **Project URL** | **Project URL** | `https://yourref.supabase.co` |
+| **anon / public key** | Project API keys → **`anon` `public`** | long string starting `eyJ…` |
+| **service_role key** | Project API keys → **`service_role` `secret`** (click **Reveal**) | long string starting `eyJ…` |
+
+> ⚠️ The **`service_role`** key is a **secret** — it bypasses all row-level security. It
+> only ever goes in your local `.env.local` (which is git-ignored) and, later, GitHub repo
+> secrets. Never paste it into the browser, client code, or anywhere public. The **`anon`**
+> key is safe to expose (it's meant for the browser); they are two different keys — don't
+> mix them up.
+>
+> Newer Supabase dashboards may label these **Publishable** (= anon) and **Secret**
+> (= service_role). Use those if that's what you see.
+
+You'll also need your **Anthropic API key** (`sk-ant-…`) and the **email** you want to log
+in with (you become the **owner**).
+
+### Then run it
+
 ```bash
 npm run setup
 ```
 
-It asks for your Supabase URL + keys, your Anthropic key, and your email (you become the
-**owner**). It writes `.env.local`, verifies the database, and adds you to the `members`
-allowlist. Safe to re-run.
+It writes `.env.local`, verifies it can reach the database, and adds you to the `members`
+allowlist. Safe to re-run any time.
 
 ## Notifications — pick your channel(s)
 
