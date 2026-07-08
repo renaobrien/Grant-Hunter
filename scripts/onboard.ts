@@ -7,6 +7,7 @@
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY.
 
+import "../engine/load-env"; // load .env.local into process.env (must be first)
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { getServiceClient, requireAnthropicKey } from "../engine/db";

@@ -3,6 +3,7 @@
 //   npm run discover              (scheduled)
 //   npx tsx engine/run-discovery.ts --manual
 
+import "./load-env"; // load .env.local into process.env (must be first)
 import { getServiceClient, requireAnthropicKey, spentCentsToday } from "./db";
 import { runDiscovery } from "./discovery";
 import { sendNotification } from "./notify";

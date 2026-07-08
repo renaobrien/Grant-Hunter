@@ -139,11 +139,16 @@ async function main() {
   });
   const { error: schemaErr } = await sb.from("profile").select("id").limit(1);
   if (schemaErr) {
+    // We know the ref (it's the subdomain of the URL we just saved), so print
+    // the exact commands to run — no <placeholders> to fill in.
+    const ref = new URL(env.SUPABASE_URL).hostname.split(".")[0];
     console.log(
-      `\n⚠ Could not read the 'profile' table (${schemaErr.message}).\n` +
-        "Apply the schema first, then re-run setup:\n" +
-        "    npx supabase link --project-ref <your-ref>\n" +
-        "    npm run db:push\n",
+      `\n⚠ The database schema isn't applied yet (couldn't read the 'profile' table).\n` +
+        "  Your keys ARE saved — just apply the schema, then re-run setup (it'll\n" +
+        "  remember everything; press Enter through the prompts):\n\n" +
+        `      npx supabase link --project-ref ${ref}\n` +
+        "      npm run db:push\n" +
+        "      npm run setup\n",
     );
     process.exit(1);
   }

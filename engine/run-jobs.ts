@@ -5,6 +5,7 @@
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
 //      (+ optional RESEND_API_KEY, TELEGRAM_BOT_TOKEN consumed by notify.ts).
 
+import "./load-env"; // load .env.local into process.env (must be first)
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getServiceClient, requireAnthropicKey } from "./db";
 import { runDraft } from "./draft";
