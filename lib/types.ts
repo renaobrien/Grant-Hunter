@@ -151,6 +151,7 @@ export interface SettingsRow {
   preference_summary: string | null;
   weekly_cron: string;
   run_mode: RunMode;
+  anthropic_api_key: string | null;
   created_at: string;
   updated_at: string;
 }

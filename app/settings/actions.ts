@@ -50,6 +50,28 @@ export async function saveSettings(vals: SettingsValues): Promise<ActionResult> 
   return { ok: true };
 }
 
+// Save (or clear) the Anthropic API key on the settings singleton. Write-only:
+// the value is never read back to the browser. An empty string clears it (the
+// engine then falls back to the ANTHROPIC_API_KEY env var, if set).
+export async function saveAnthropicKey(key: string): Promise<ActionResult> {
+  const trimmed = key.trim();
+  if (trimmed && !trimmed.startsWith("sk-ant-")) {
+    return {
+      ok: false,
+      error: "That doesn't look like an Anthropic key — they start with 'sk-ant-'.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("settings")
+    .upsert({ id: 1, anthropic_api_key: trimmed || null }, { onConflict: "id" });
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
 // Upsert one notification channel row keyed on the unique `channel` column.
 export async function upsertChannel(
   channel: NotificationChannel,

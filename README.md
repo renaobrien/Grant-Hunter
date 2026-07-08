@@ -46,10 +46,13 @@ npm run discover   # find new grants now
 npm run jobs       # process drafts + send deadline reminders
 ```
 
-Want it to find grants on a schedule without you lifting a finger — even when your
-computer is off? That part is optional and uses GitHub Actions as a free scheduler.
-See **[SETUP.md](./SETUP.md)** for turning that on, and for hosting the dashboard so
-it's always available.
+Once it's running, sign in with your owner email and add your **Anthropic key** in the app
+under **Settings → API keys** — no config files to edit.
+
+Want it always online instead of on your laptop — so sign-in works from your phone and
+grants get found even when your computer is off? Host it in ~15 minutes on Vercel (free
+tier): **[DEPLOY.md](DEPLOY.md)**. You paste the Supabase values into the host's UI, so
+there's no `npm run setup` and no `.env.local` at all.
 
 ## What it costs to run
 

@@ -121,7 +121,12 @@ async function main() {
   }
   await ask("NEXT_PUBLIC_SUPABASE_ANON_KEY", "Supabase anon/public key");
   await ask("SUPABASE_SERVICE_ROLE_KEY", "Supabase service_role key (secret)");
-  await ask("ANTHROPIC_API_KEY", "Anthropic API key (sk-ant-…)");
+  // Optional here — you can add it later in the dashboard (Settings → API keys).
+  console.log(
+    "\nAnthropic API key — the agents' AI. Optional now; you can add it in the\n" +
+      "dashboard later (Settings → API keys). Press Enter to skip.",
+  );
+  await ask("ANTHROPIC_API_KEY", "Anthropic API key (sk-ant-…, or Enter to skip)", false);
   let owner = "";
   while (!owner.includes("@")) {
     owner = (await rl.question("\nYour email (the owner who can log into the dashboard)\n> ")).trim().toLowerCase();
@@ -236,13 +241,20 @@ async function main() {
 
   rl.close();
 
+  const hasAnthropic = Boolean((env.ANTHROPIC_API_KEY ?? "").trim());
   console.log(
     "\nSetup complete. Next:\n" +
-      "  1. npm run onboard           # interview → your org profile (needs ANTHROPIC_API_KEY)\n" +
-      "  2. npm run discover:manual   # first discovery run — spends a few dollars of API credit\n" +
-      "  3. Add GitHub repo secrets SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY\n" +
-      "     so weekly discovery runs automatically (.github/workflows/discovery.yml).\n" +
-      "  4. Dashboard (login, pipeline board, ratings) lands in Phase 1 — see SETUP.md.\n",
+      "  1. npm run dev               # start the app, then sign in with your owner email\n" +
+      (hasAnthropic
+        ? ""
+        : "     ↳ In the app: Settings → API keys → paste your Anthropic key (sk-ant-…).\n") +
+      "  2. Finish onboarding in the browser (it builds your org profile), or run\n" +
+      "     npm run onboard from the CLI.\n" +
+      "  3. npm run discover:manual   # first discovery run — spends a few dollars of API credit\n" +
+      "  4. To run discovery automatically each week, add GitHub repo secrets\n" +
+      "     SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (and ANTHROPIC_API_KEY if you\n" +
+      "     didn't set it in the dashboard) — see .github/workflows/discovery.yml.\n" +
+      "\nHosting this online instead of your laptop? See DEPLOY.md.\n",
   );
 }
 

@@ -22,6 +22,33 @@ export function requireAnthropicKey(): string {
   return key;
 }
 
+/**
+ * The Anthropic API key, resolved dashboard-first then environment.
+ *
+ * Users manage the key in the web app (Settings → API keys), which writes it to
+ * the settings singleton. We read that first and fall back to the
+ * ANTHROPIC_API_KEY env var, so both dashboard-managed and env-based (CI /
+ * hosting) deploys work. Throws a message that points at both sources.
+ */
+export async function resolveAnthropicKey(sb: SupabaseClient): Promise<string> {
+  let fromDb = "";
+  const { data } = await sb
+    .from("settings")
+    .select("anthropic_api_key")
+    .eq("id", 1)
+    .maybeSingle();
+  fromDb = (data?.anthropic_api_key ?? "").trim();
+
+  const key = fromDb || (process.env.ANTHROPIC_API_KEY ?? "").trim();
+  if (!key) {
+    throw new Error(
+      "No Anthropic API key found. Add one in the dashboard (Settings → API keys), " +
+        "or set ANTHROPIC_API_KEY in the environment.",
+    );
+  }
+  return key;
+}
+
 const arr = <T>(v: T[] | null | undefined): T[] => (Array.isArray(v) ? v : []);
 
 export async function loadProfile(sb: SupabaseClient): Promise<Profile> {

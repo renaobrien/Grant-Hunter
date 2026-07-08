@@ -3,6 +3,7 @@ import { Card, FieldRow, Chip } from "@/components/ui";
 import type { SettingsRow, NotificationChannelRow } from "@/lib/types";
 import SettingsForm from "./SettingsForm";
 import ChannelsEditor from "./ChannelsEditor";
+import ApiKeysForm from "./ApiKeysForm";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,9 @@ export default async function SettingsPage() {
   const settings = (settingsRes.data as SettingsRow | null) ?? null;
   const channels = (channelsRes.data as NotificationChannelRow[] | null) ?? [];
 
+  // Presence only — the key value itself is never passed to the client.
+  const hasAnthropicKey = Boolean(settings?.anthropic_api_key);
+
   const cron = settings?.weekly_cron ?? DEFAULT_CRON;
   const cronHuman = describeCron(cron);
 
@@ -57,10 +61,19 @@ export default async function SettingsPage() {
         <div>
           <h1>Settings</h1>
           <p className="muted" style={{ marginBottom: 0 }}>
-            Discovery cadence, spend guardrails, and where alerts go.
+            API keys, discovery cadence, spend guardrails, and where alerts go.
           </p>
         </div>
       </div>
+
+      <Card>
+        <h2>API keys</h2>
+        <p className="muted">
+          The Anthropic key the agents spend. Set it here and you never need to
+          touch <code>.env.local</code> — it&rsquo;s stored on your own database.
+        </p>
+        <ApiKeysForm hasKey={hasAnthropicKey} />
+      </Card>
 
       <Card>
         <h2>Discovery &amp; budget</h2>

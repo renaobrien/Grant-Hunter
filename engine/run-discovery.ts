@@ -4,7 +4,7 @@
 //   npx tsx engine/run-discovery.ts --manual
 
 import "./load-env"; // load .env.local into process.env (must be first)
-import { getServiceClient, requireAnthropicKey, spentCentsToday } from "./db";
+import { getServiceClient, resolveAnthropicKey, spentCentsToday } from "./db";
 import { runDiscovery } from "./discovery";
 import { sendNotification } from "./notify";
 
@@ -20,7 +20,7 @@ interface RecentGrant {
 
 async function main(): Promise<void> {
   const sb = getServiceClient();
-  const apiKey = requireAnthropicKey();
+  const apiKey = await resolveAnthropicKey(sb);
 
   const summary = await runDiscovery(sb, { apiKey, trigger });
 

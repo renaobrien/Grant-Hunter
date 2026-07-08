@@ -10,14 +10,14 @@
 import "../engine/load-env"; // load .env.local into process.env (must be first)
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { getServiceClient, requireAnthropicKey } from "../engine/db";
+import { getServiceClient, resolveAnthropicKey } from "../engine/db";
 import { renderVoice } from "../engine/render-profile";
 import { ONBOARDING_QUESTIONS } from "../engine/onboarding-questions";
 import { compileProfile } from "../engine/compile-profile";
 
 async function main() {
   const sb = getServiceClient();
-  const apiKey = requireAnthropicKey();
+  const apiKey = await resolveAnthropicKey(sb);
 
   const rl = createInterface({ input, output });
   console.log(

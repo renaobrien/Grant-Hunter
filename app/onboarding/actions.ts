@@ -2,11 +2,12 @@
 
 // Server Actions for the web onboarding flow. Profile writes go through the
 // request-scoped authed client (RLS enforces the members allowlist); the Claude
-// compile uses the server-only ANTHROPIC_API_KEY.
+// compile uses the Anthropic key from Settings (falling back to the env var).
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { renderVoice } from "@/engine/render-profile";
 import { compileProfile } from "@/engine/compile-profile";
+import { resolveAnthropicKey } from "@/engine/db";
 import type { RunMode } from "@/lib/types";
 
 export type CompileResult =
@@ -17,12 +18,13 @@ export type CompileResult =
 export async function runOnboardingCompile(
   answers: Record<string, string>,
 ): Promise<CompileResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return {
-      ok: false,
-      error: "Missing ANTHROPIC_API_KEY — add it to .env.local and restart the app.",
-    };
+  const supabase = await createClient();
+
+  let apiKey: string;
+  try {
+    apiKey = await resolveAnthropicKey(supabase);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
   }
 
   let profile;
@@ -33,7 +35,6 @@ export async function runOnboardingCompile(
   }
 
   const voice = renderVoice(profile);
-  const supabase = await createClient();
   const { error } = await supabase.from("profile").upsert(
     { id: 1, ...profile, compiled_voice: voice, compiled_at: new Date().toISOString() },
     { onConflict: "id" },

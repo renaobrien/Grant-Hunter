@@ -7,7 +7,7 @@
 
 import "./load-env"; // load .env.local into process.env (must be first)
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getServiceClient, requireAnthropicKey } from "./db";
+import { getServiceClient, resolveAnthropicKey } from "./db";
 import { runDraft } from "./draft";
 import { sendNotification } from "./notify";
 
@@ -128,7 +128,7 @@ async function sweepDeadlines(sb: SupabaseClient): Promise<{ scanned: number; pi
 
 async function main(): Promise<void> {
   const sb = getServiceClient();
-  const apiKey = requireAnthropicKey();
+  const apiKey = await resolveAnthropicKey(sb);
 
   const q = await runQueuedJobs(sb, apiKey);
   const d = await sweepDeadlines(sb);

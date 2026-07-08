@@ -101,8 +101,12 @@ section (in some dashboard versions the URL lives under **Data API** and the key
 > Newer Supabase dashboards may label these **Publishable** (= anon) and **Secret**
 > (= service_role). Use those if that's what you see.
 
-You'll also need your **Anthropic API key** (`sk-ant-…`) and the **email** you want to log
-in with (you become the **owner**).
+You'll also need the **email** you want to log in with (you become the **owner**).
+
+> **Anthropic API key — optional at this step.** Setup will offer to take it, but you can
+> just press Enter and add it later in the app under **Settings → API keys**. That's the
+> key the agents spend (`sk-ant-…`, from [console.anthropic.com](https://console.anthropic.com/settings/keys)) —
+> it's stored in your database, so you never have to edit `.env.local` for it.
 
 ### Then run it
 
@@ -112,6 +116,10 @@ npm run setup
 
 It writes `.env.local`, verifies it can reach the database, and adds you to the `members`
 allowlist. Safe to re-run any time.
+
+> **Want it online instead of your laptop?** Skip `npm run setup` entirely and follow
+> **[DEPLOY.md](DEPLOY.md)** — you set the same values as environment variables in your host
+> (e.g. Vercel) and add the Anthropic key from the dashboard after signing in.
 
 ## Notifications — pick your channel(s)
 
