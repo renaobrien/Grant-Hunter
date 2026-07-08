@@ -1,4 +1,4 @@
--- grants-platform :: widen notification_channels.channel to all supported channels
+-- Grant Hunter :: widen notification_channels.channel to all supported channels
 -- 0001 only allowed ('email','telegram'); the dispatcher (engine/notify.ts) also
 -- fans out to Slack + Discord webhooks. Re-scope the CHECK constraint accordingly.
 

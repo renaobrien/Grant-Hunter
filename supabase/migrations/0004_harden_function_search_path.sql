@@ -1,4 +1,4 @@
--- grants-platform :: pin search_path on the two functions that lacked it, per the
+-- Grant Hunter :: pin search_path on the two functions that lacked it, per the
 -- Supabase security linter (0011_function_search_path_mutable). is_member/is_owner
 -- already set it in 0001. `create or replace` is idempotent, so this is safe on a
 -- fresh install (runs right after 0001) and on an already-provisioned instance.

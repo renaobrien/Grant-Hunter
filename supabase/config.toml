@@ -1,5 +1,5 @@
 # Supabase project config. `project_id` is set by `supabase link` during setup.
-project_id = "grants-platform"
+project_id = "grant-hunter"
 
 [db]
 major_version = 15

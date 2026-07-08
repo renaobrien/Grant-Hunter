@@ -21,7 +21,7 @@ computer — the rest of this guide is identical either way.
 1. Go to <https://github.com/renaobrien/Grant-Hunter>.
 2. Click the green **Code** button → **Download ZIP**.
 3. Find the downloaded `.zip` (usually in your **Downloads** folder) and double-click it
-   to unzip. You'll get a folder like `grants-platform-main`.
+   to unzip. You'll get a folder like `Grant-Hunter-main`.
 4. Move that folder somewhere you'll remember (e.g. your Desktop) and, if you like, rename
    it to `grants`.
 

@@ -10,7 +10,7 @@ import ConsoleCapture from "@/components/ConsoleCapture";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Grants",
+  title: "Grant Hunter",
   description: "Grant discovery + application workspace",
 };
 
@@ -67,7 +67,7 @@ export default async function RootLayout({
   if (brand?.brand_bg)
     (brandVars as Record<string, string>)["--brand-bg"] = brand.brand_bg;
 
-  const orgName = brand?.org_name?.trim() || "Grants";
+  const orgName = brand?.org_name?.trim() || "Grant Hunter";
 
   return (
     <html lang="en">

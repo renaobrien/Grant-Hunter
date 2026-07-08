@@ -94,7 +94,7 @@ async function main() {
     };
   };
 
-  console.log("\n— grants-platform setup —\n");
+  console.log("\n— Grant Hunter setup —\n");
   {
     const cur = env.NEXT_PUBLIC_SUPABASE_URL;
     const shown = cur ? ` (current: ${cur})` : "";

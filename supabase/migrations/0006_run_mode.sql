@@ -1,4 +1,4 @@
--- grants-platform :: how the org chose to run its grant engine, captured during
+-- Grant Hunter :: how the org chose to run its grant engine, captured during
 -- the web onboarding flow. Informational — it drives the copy/instructions the
 -- app shows (Runs page, onboarding); the actual scheduling lives in GitHub
 -- Actions, a local cron, or manual runs depending on this value.

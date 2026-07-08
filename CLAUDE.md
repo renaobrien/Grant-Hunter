@@ -1,4 +1,4 @@
-# CLAUDE.md — grants-platform
+# CLAUDE.md — Grant Hunter
 
 ## What this project IS
 

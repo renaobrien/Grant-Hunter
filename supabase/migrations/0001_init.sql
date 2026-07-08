@@ -1,4 +1,4 @@
--- grants-platform :: initial schema
+-- Grant Hunter :: initial schema
 -- SINGLE ORGANIZATION per instance. No org_id, no multi-tenancy.
 -- Each deployment is one org's private instance. Agents use the service role
 -- (bypass RLS); the browser is gated to emails in the `members` allowlist.

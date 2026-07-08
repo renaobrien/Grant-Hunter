@@ -1,4 +1,4 @@
--- grants-platform :: move the RLS helper functions out of the PostgREST-exposed
+-- Grant Hunter :: move the RLS helper functions out of the PostgREST-exposed
 -- `public` schema into a `private` schema. They must stay SECURITY DEFINER (so a
 -- policy can read `members` without recursing through members' own RLS) and stay
 -- EXECUTE-able by anon/authenticated (RLS policy expressions are evaluated as the

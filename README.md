@@ -1,4 +1,4 @@
-# grants-platform
+# Grant Hunter
 
 **A white-label, self-hosted grant discovery + application assistant.** Clone it, run one setup command, fill in your org profile, and you get:
 
