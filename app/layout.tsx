@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import HealthHeader from "@/components/HealthHeader";
+import FeedbackButton from "@/components/FeedbackButton";
+import ConsoleCapture from "@/components/ConsoleCapture";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +36,24 @@ async function loadBrand(): Promise<BrandProfile | null> {
   }
 }
 
+async function hasSession(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return !!user;
+  } catch {
+    return false;
+  }
+}
+
 export default async function RootLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const brand = await loadBrand();
+  const [brand, authed] = await Promise.all([loadBrand(), hasSession()]);
 
   const brandVars: CSSProperties = {};
   if (brand?.brand_primary)
@@ -56,6 +70,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
+        <ConsoleCapture />
         <div style={brandVars}>
           <nav className="app-nav">
             <Link href="/" className="brand">
@@ -76,6 +91,7 @@ export default async function RootLayout({
           </nav>
           <HealthHeader />
           <main>{children}</main>
+          {authed ? <FeedbackButton /> : null}
         </div>
       </body>
     </html>
