@@ -7,15 +7,16 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev",
+    "preinstall": "node scripts/require-node.cjs",
+    "dev": "node scripts/require-node.cjs && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "setup": "tsx scripts/setup.ts",
-    "onboard": "tsx scripts/onboard.ts",
-    "discover": "tsx engine/run-discovery.ts",
-    "discover:manual": "tsx engine/run-discovery.ts --manual",
-    "jobs": "tsx engine/run-jobs.ts",
+    "setup": "node scripts/require-node.cjs && tsx scripts/setup.ts",
+    "onboard": "node scripts/require-node.cjs && tsx scripts/onboard.ts",
+    "discover": "node scripts/require-node.cjs && tsx engine/run-discovery.ts",
+    "discover:manual": "node scripts/require-node.cjs && tsx engine/run-discovery.ts --manual",
+    "jobs": "node scripts/require-node.cjs && tsx engine/run-jobs.ts",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset"
   },
