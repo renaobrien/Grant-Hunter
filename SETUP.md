@@ -210,11 +210,13 @@ hand from the **Actions** tab.
 
 ## 7. (Optional) Host the dashboard
 
-To reach the dashboard from anywhere (not just `localhost` on your machine), deploy it - it's a standard Next.js app, so **Vercel** (or Netlify / your own host) works:
+To reach the dashboard from anywhere (not just `localhost` on your machine), deploy it - it's a standard Next.js app, so **Vercel** (or Netlify / your own host) works. Full step-by-step, including the members-allowlist first login, is in **[DEPLOY.md](DEPLOY.md)**. The short version:
 
 1. Import the repo in Vercel.
-2. Set env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY` (+ `RESEND_*` / `TELEGRAM_*` if used).
+2. Set env vars: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `APP_BASE_URL`, and **`REQUIRE_LOGIN=true`** (turns sign-in
+   on - it's off by default, and you want it on for a public host). Add `ANTHROPIC_API_KEY`
+   only if you'd rather not set it in the dashboard; `RESEND_*` / `TELEGRAM_*` if used.
 3. In Supabase → **Auth → URL Configuration**, set **Site URL** to your Vercel URL so
    magic links point back to your deployment.
 4. Deploy, then log in with your owner email (magic link).

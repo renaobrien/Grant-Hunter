@@ -31,6 +31,9 @@ npm run setup      # your keys + who can log in + notifications → .env.local
 npm run onboard    # a short AI interview that builds your org profile
 ```
 
+The `git clone` needs **no GitHub login or password** - this is a public repo. (If git
+prompts you for a username/password, you're on an old/private URL; use the URL above.)
+
 **`YOUR_PROJECT_REF`** is your Supabase project's short ID (like `aussykjrxblarjllmdor`),
 under **Project Settings → General → Reference ID**. Paste just the ID - not a URL.
 
@@ -47,8 +50,11 @@ npm run jobs       # process drafts + send deadline reminders
 
 Running locally, it opens **straight to the dashboard - no login** (a sign-in wall on your
 own machine is just friction). Add your **Anthropic key** in the app under **Settings → API
-keys** - no config files to edit. (Login turns back on automatically when you host it
-publicly - see below.)
+keys** - no config files to edit.
+
+Want login anyway? It's one setting: add `REQUIRE_LOGIN=true` to `.env.local` and restart,
+and you get magic-link sign-in gated by a members allowlist. Hosting publicly? You should
+turn it on - see [DEPLOY.md](DEPLOY.md).
 
 Want it always online instead of on your laptop, so sign-in works from your phone and
 grants get found even when your computer is off? Host it in ~15 minutes on Vercel (free
@@ -108,7 +114,8 @@ examples/                sample org profiles (reference only - not applied)
 
 This is a private tool for one organization. No sign-up, no other tenants.
 
-- **People** log into the dashboard with a magic link, but only if their email is on your **members allowlist** (you choose who's on it). That's enforced in the database itself (Row-Level Security), not just hidden in the UI.
+- **Login is off by default** for local use - you just open the app. Turn it on with `REQUIRE_LOGIN=true` (recommended when hosting publicly).
+- **With login on**, people sign in with a magic link, but only if their email is on your **members allowlist** (you choose who's on it). That's enforced in the database itself (Row-Level Security), not just hidden in the UI.
 - **The agents** (discovery, drafting, deadline sweeps) run in the background with a privileged server key, so they keep working regardless of who's logged in.
 
 Everything the agents know about your org lives in one **profile** record you fill in during onboarding - mission, what you do, what you're eligible for, what to avoid. Every agent reads that record before it acts. Swap the profile and the exact same code runs for a completely different organization - that's what makes it white-label.
