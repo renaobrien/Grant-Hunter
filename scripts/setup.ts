@@ -48,62 +48,80 @@ function writeEnv(env: Record<string, string>) {
 async function main() {
   const env = readEnv();
   const rl = createInterface({ input, output });
-  const ask = async (
-    key: string,
-    label: string,
-    required = true,
-    validate?: (v: string) => string | null,
-  ) => {
+  const ask = async (key: string, label: string, required = true) => {
     const cur = env[key];
     const shown = cur ? ` (current: ${cur.slice(0, 8)}…)` : "";
     let v = (await rl.question(`${label}${shown}\n> `)).trim();
     if (!v && cur) v = cur;
     if (required && !v) {
       console.log("  (required — try again)");
-      return ask(key, label, required, validate);
-    }
-    if (v && validate) {
-      const err = validate(v);
-      if (err) {
-        console.log(`  ✖ ${err}`);
-        return ask(key, label, required, validate);
-      }
+      return ask(key, label, required);
     }
     if (v) env[key] = v;
   };
 
-  // The "Project URL" (Supabase's own label) is e.g.
-  // https://abcdefghijklmnopqrst.supabase.co — NOT the dashboard URL and NOT
-  // the supabase.com marketing site. Wrong values here cause auth/data calls to
-  // fetch HTML and fail with "Unexpected token '<' … is not valid JSON".
-  const validateProjectUrl = (v: string): string | null => {
+  // Turn whatever the user pastes for "Project URL" into the real origin,
+  // https://<ref>.supabase.co. People routinely paste the DASHBOARD url (the
+  // address in their browser: https://supabase.com/dashboard/project/<ref>) or
+  // just the bare 20-char ref — both contain the ref, so we EXTRACT it instead
+  // of rejecting. A wrong origin makes every auth/data call fetch HTML and fail
+  // with "Unexpected token '<' … is not valid JSON", so this must be exact.
+  const REF = /^[a-z0-9]{20}$/;
+  const deriveProjectUrl = (
+    raw: string,
+  ): { url?: string; error?: string; note?: string } => {
+    const input = raw.trim().replace(/\/+$/, "");
+    if (!input) return { error: "Required." };
+    if (REF.test(input)) return { url: `https://${input}.supabase.co`, note: "ref" };
     let u: URL;
     try {
-      u = new URL(v);
+      u = new URL(input);
     } catch {
-      return "That isn't a URL. Paste your Project URL, e.g. https://yourref.supabase.co";
+      return {
+        error:
+          "Not a URL or a project ref. Paste your Project URL (https://yourref.supabase.co) or the 20-character ref.",
+      };
     }
     const host = u.hostname.toLowerCase();
-    if (host === "supabase.com" || host === "www.supabase.com" || u.pathname.includes("/dashboard/")) {
-      return "That's the Supabase website, not your project. Use Project Settings → API → Project URL (ends in .supabase.co).";
-    }
-    if (!host.endsWith(".supabase.co")) {
-      return "Doesn't look like a project URL. It should end in .supabase.co (e.g. https://yourref.supabase.co).";
-    }
-    return null;
+    // Already a project origin (…supabase.co) — use it as-is.
+    if (host.endsWith(".supabase.co")) return { url: `https://${host}` };
+    // Dashboard URL — pull the ref out of /project/<ref>.
+    const fromPath = u.pathname.match(/project\/([a-z0-9]{20})/);
+    if (fromPath) return { url: `https://${fromPath[1]}.supabase.co`, note: "dashboard" };
+    return {
+      error:
+        "Couldn't find a project ref in that. Use Supabase → Project Settings → Project URL (ends in .supabase.co), or paste the 20-character ref.",
+    };
   };
 
   console.log("\n— grants-platform setup —\n");
-  console.log("From your Supabase project (Project Settings → API):");
-  await ask(
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "Supabase Project URL (https://yourref.supabase.co)",
-    true,
-    validateProjectUrl,
-  );
-  // Normalize: strip any trailing slash so downstream URL joins stay clean.
-  env.NEXT_PUBLIC_SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "");
-  env.SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL;
+  console.log("From your Supabase project (Project Settings, the API section):");
+  {
+    const cur = env.NEXT_PUBLIC_SUPABASE_URL;
+    const shown = cur ? ` (current: ${cur})` : "";
+    let url: string | undefined;
+    while (!url) {
+      const raw =
+        (
+          await rl.question(
+            `Supabase Project URL — the dashboard URL or bare ref works too, we'll sort it out${shown}\n> `,
+          )
+        ).trim() ||
+        cur ||
+        "";
+      const r = deriveProjectUrl(raw);
+      if (!r.url) {
+        console.log(`  ✖ ${r.error ?? "Try again."}`);
+        continue;
+      }
+      url = r.url;
+      if (r.note === "dashboard")
+        console.log(`  → Using ${url} (pulled the ref out of the dashboard URL you pasted).`);
+      else if (r.note === "ref") console.log(`  → Using ${url}.`);
+    }
+    env.NEXT_PUBLIC_SUPABASE_URL = url;
+    env.SUPABASE_URL = url;
+  }
   await ask("NEXT_PUBLIC_SUPABASE_ANON_KEY", "Supabase anon/public key");
   await ask("SUPABASE_SERVICE_ROLE_KEY", "Supabase service_role key (secret)");
   await ask("ANTHROPIC_API_KEY", "Anthropic API key (sk-ant-…)");

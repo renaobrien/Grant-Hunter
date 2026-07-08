@@ -81,13 +81,18 @@ section (in some dashboard versions the URL lives under **Data API** and the key
 | **anon / public key** | **`anon` `public`** (a.k.a. **Publishable**) | long string starting `eyJ…` |
 | **service_role key** | **`service_role` `secret`** (a.k.a. **Secret**) — click **Reveal** | long string starting `eyJ…` |
 
-> ⚠️ **The Project URL must end in `.supabase.co`.** It is NOT `https://supabase.com`
-> (the marketing site) and NOT the dashboard address
-> (`https://supabase.com/dashboard/project/…`). If you paste the wrong one, sign-in and
-> every data load fail with **`Unexpected token '<', "<!DOCTYPE"… is not valid JSON`** —
-> that means the app fetched a web page instead of your database. (Setup now rejects the
-> wrong URL, but fix `.env.local` and restart `npm run dev` if you set it before this
-> check existed.)
+> **About the Project URL:** the real value ends in `.supabase.co` (e.g.
+> `https://yourref.supabase.co`). If you accidentally paste the **dashboard** address from
+> your browser bar (`https://supabase.com/dashboard/project/yourref`) or just the bare
+> **ref**, that's fine — setup detects the ref and builds the right URL for you, and prints
+> what it used. Only a value with no ref at all (like plain `https://supabase.com`) is
+> refused.
+>
+> Why it matters: a wrong origin makes sign-in and every data load fail with
+> **`Unexpected token '<', "<!DOCTYPE"… is not valid JSON`** — the app fetched a web page
+> instead of your database. If you hit that, you set the URL before this auto-fix existed:
+> re-run `npm run setup` (or fix the `…SUPABASE_URL=` lines in `.env.local`) and restart
+> `npm run dev`.
 
 > ⚠️ The **`service_role`** key is a **secret** — it bypasses all row-level security. It
 > only ever goes in your local `.env.local` (which is git-ignored) and, later, GitHub repo
