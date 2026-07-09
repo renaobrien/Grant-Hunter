@@ -38,15 +38,14 @@ Notes: the `git clone` needs **no GitHub login or password** (public repo). If y
 GitHub instead - **[SETUP.md](SETUP.md)** has the full walkthrough, plus an optional
 CLI path for terminal fans.
 
-**Day to day** you only need one command (everything else is buttons in the app):
+After that, start it with:
 
 ```bash
-npm run dev        # open the dashboard at http://localhost:3000
+npm run dev        # dashboard at http://localhost:3000
 ```
 
-Run discovery from the **board or Runs page**, manage your **Anthropic key** and
-**notification channels** under Settings, and pull app updates with **Settings ->
-Updates** - no re-downloading, no config files.
+Run discovery from the board or Runs page. Keys, notification channels, the run
+schedule, and app updates all live under **Settings**.
 
 Running locally, it opens **straight to the dashboard - no login** (a sign-in wall on your
 own machine is just friction).
@@ -121,10 +120,10 @@ Everything the agents know about your org lives in one **profile** record you fi
 
 ## Safety
 
-A per-instance **daily budget cap** (`settings.daily_budget_usd`) is checked at the start of every agent run and skips + logs if exceeded. No auto-approve loops; every run is recorded in `agent_runs` with tokens + cost. Since you use your own API key, a runaway only ever touches your own bill - and the cap protects you anyway.
-
-## Status
-
-Feature-complete and typechecked (`tsc` clean, `next build` passes): the adversarial
-discovery engine, the Drafter ⇄ Critic drafting loop, the jobs worker, channel-of-choice
-notifications, and the full dashboard are all built. Nothing is deployed *by this repo* - each user provisions their own instance (see [SETUP.md](./SETUP.md)).
+A per-instance **daily budget cap** (`settings.daily_budget_usd`) is enforced in code:
+discovery checks remaining budget before it starts *and* again before every round
+(`engine/discovery.ts`), and drafting checks before each Drafter/Critic round
+(`engine/draft.ts`). Every agent call is recorded in `agent_runs` with tokens and cost -
+that ledger is what the cap reads. Grant links are fetched and verified before a grant
+reaches your board, so dead 404 pages get cut. Since you use your own API key, a runaway
+only ever touches your own bill - and the cap stops it first.

@@ -86,7 +86,7 @@ async function sweepDeadlines(sb: SupabaseClient): Promise<{ scanned: number; pi
   const { data, error } = await sb
     .from("grants")
     .select("id, funder, program_name, deadline, application_url, source_url, last_deadline_ping")
-    .in("status", ["found", "researching", "drafting"])
+    .in("status", ["found", "drafting"])
     .not("deadline", "is", null);
   if (error) throw new Error(`could not load grants for deadline sweep: ${error.message}`);
 

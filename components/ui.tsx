@@ -27,25 +27,17 @@ export function Card({
 // ---------------------------------------------------------------------------
 const STATUS_TONE: Record<GrantStatus, string> = {
   found: "neutral",
-  researching: "info",
   drafting: "info",
-  applied: "warn",
   submitted: "warn",
   awarded: "good",
-  passed: "muted",
-  discarded: "muted",
   dead: "bad",
 };
 
 const STATUS_LABEL: Record<GrantStatus, string> = {
   found: "Found",
-  researching: "Researching",
-  drafting: "Drafting",
-  applied: "Applied",
+  drafting: "Working on it",
   submitted: "Submitted",
   awarded: "Awarded",
-  passed: "Passed",
-  discarded: "Discarded",
   dead: "Dead",
 };
 

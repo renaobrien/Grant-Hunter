@@ -25,6 +25,64 @@ const isHttp = (u?: string | null) => !!u && /^https?:\/\//i.test(u);
 const eq = (a?: string | null, b?: string | null) =>
   (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
 
+// ---------------------------------------------------------------------------
+// URL liveness. Models sometimes cite pages that 404 (moved, hallucinated, or
+// stale search results). Before a survivor reaches the board, actually fetch
+// its URLs: a dead application_url/source_url is dropped, and a survivor with
+// NO live URL at all is cut entirely - a grant you can't open is noise.
+// ---------------------------------------------------------------------------
+const URL_CHECK_TIMEOUT_MS = 8_000;
+
+/** true = URL responds (2xx/3xx; 401/403 count - many portals gate content). */
+async function urlAlive(url: string): Promise<boolean> {
+  const attempt = async (method: "HEAD" | "GET") => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), URL_CHECK_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        method,
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { "user-agent": "Mozilla/5.0 (compatible; GrantHunter/1.0; link check)" },
+      });
+      if (res.ok) return true;
+      // Auth-gated portals still prove the page exists.
+      if (res.status === 401 || res.status === 403) return true;
+      // Some servers reject HEAD outright - retry those as GET.
+      if (method === "HEAD" && (res.status === 405 || res.status === 501)) return null;
+      return false;
+    } catch {
+      return method === "HEAD" ? null : false; // network/timeout: retry HEAD as GET once
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const head = await attempt("HEAD");
+  if (head !== null) return head;
+  return (await attempt("GET")) === true;
+}
+
+/** Null out dead URLs on a ruling; return false when nothing usable is left. */
+async function verifyRulingUrls(r: JudgeRuling): Promise<boolean> {
+  const checks: Array<Promise<void>> = [];
+  if (isHttp(r.application_url)) {
+    checks.push(
+      urlAlive(r.application_url as string).then((ok) => {
+        if (!ok) r.application_url = null as unknown as string;
+      }),
+    );
+  }
+  if (isHttp(r.source_url)) {
+    checks.push(
+      urlAlive(r.source_url as string).then((ok) => {
+        if (!ok) r.source_url = null as unknown as string;
+      }),
+    );
+  }
+  await Promise.all(checks);
+  return isHttp(r.application_url) || isHttp(r.source_url);
+}
+
 const candidateKey = (c: Candidate) =>
   [c.application_url, c.source_url].find(isHttp) || `${c.funder}::${c.program_name}`;
 
@@ -158,6 +216,15 @@ export async function runDiscovery(
       // Code-level guard on the Judge's own survival rule (fit_score >= 3),
       // in case the model marks survives=true on a record that breaks it.
       if (ruling?.survives && ruling.fit_score >= 3) {
+        // Dead-link guard: fetch the cited URLs; drop dead ones, and cut the
+        // survivor entirely when no live URL remains.
+        if (!(await verifyRulingUrls(ruling))) {
+          summary.skipped++;
+          console.warn(
+            `[discovery] cut "${ruling.funder} - ${ruling.program_name}": no live URL (404/unreachable)`,
+          );
+          continue;
+        }
         const res = await upsertRuling(sb, ruling, index);
         if (res.action === "created") summary.created++;
         else if (res.action === "updated") summary.updated++;

@@ -1,5 +1,5 @@
 import { authDisabled, createClient } from "@/lib/supabase/server";
-import { Card, FieldRow, Chip } from "@/components/ui";
+import { Card } from "@/components/ui";
 import type {
   NotificationChannel,
   SettingsRow,
@@ -11,6 +11,7 @@ import SettingsForm from "./SettingsForm";
 import ChannelsEditor, { type ChannelView } from "./ChannelsEditor";
 import ApiKeysForm from "./ApiKeysForm";
 import UpdatePanel from "./UpdatePanel";
+import ScheduleForm from "./ScheduleForm";
 
 export const dynamic = "force-dynamic";
 
@@ -109,15 +110,13 @@ export default async function SettingsPage() {
 
       {authDisabled() ? (
         <Card>
-          <h2>
-            Login is off <Chip label="Heads up" tone="warn" />
-          </h2>
+          <h2>No sign-in on this instance</h2>
           <p className="muted" style={{ marginBottom: 0 }}>
-            Anyone who can reach this machine&rsquo;s port has full control of
-            this instance - keys, spend, data, and updates. That&rsquo;s fine on
-            localhost. If this instance is reachable from anywhere else, set{" "}
-            <code>REQUIRE_LOGIN=true</code> in <code>.env.local</code> and add
-            yourself to the <code>members</code> table (see DEPLOY.md).
+            Normal for localhost. If this app is ever reachable from another
+            machine, turn sign-in on first: set <code>REQUIRE_LOGIN=true</code>{" "}
+            in <code>.env.local</code> and add your email to the{" "}
+            <code>members</code> table (DEPLOY.md has the steps). Without it,
+            anyone who can open this page controls your keys, spend, and data.
           </p>
         </Card>
       ) : null}
@@ -147,18 +146,22 @@ export default async function SettingsPage() {
 
       <Card>
         <h2>Weekly run schedule</h2>
-        <FieldRow label="Cron (UTC)">
-          <span className="row">
-            <code>{cron}</code>
-            {cronHuman ? <Chip label={cronHuman} tone="neutral" /> : null}
-          </span>
-        </FieldRow>
-        <p className="muted" style={{ marginTop: "var(--s3)", marginBottom: 0 }}>
-          Automatic weekly runs are off until you uncomment the{" "}
-          <code>schedule:</code> block in{" "}
-          <code>.github/workflows/discovery.yml</code>. The button on the Runs
-          page starts one anytime.
+        <p className="muted">
+          {cronHuman ? (
+            <>
+              Currently: <strong>{cronHuman}</strong>.
+            </>
+          ) : (
+            <>
+              Current cron: <code>{cron}</code>.
+            </>
+          )}{" "}
+          The Run button works anytime regardless.
         </p>
+        <ScheduleForm
+          initialCron={cron}
+          runMode={settings?.run_mode ?? "manual"}
+        />
       </Card>
 
       <Card>

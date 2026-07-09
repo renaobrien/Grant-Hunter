@@ -214,3 +214,34 @@ export async function applyUpdate(): Promise<UpdateApply> {
     notes,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Weekly run schedule. Stored as a cron string (UTC) in settings.weekly_cron.
+// The in-app scheduler (lib/scheduler.ts) honors it for run_mode = "local";
+// GitHub-mode users also need the matching line in their workflow file.
+// ---------------------------------------------------------------------------
+export async function saveSchedule(input: {
+  dow: string; // "0".."6" or "*"
+  hour: number;
+  minute: number;
+}): Promise<ActionResult> {
+  const { dow, hour, minute } = input;
+  if (dow !== "*" && !/^[0-6]$/.test(dow)) {
+    return { ok: false, error: "Pick a day of the week (or every day)." };
+  }
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) {
+    return { ok: false, error: "Hour must be 0-23." };
+  }
+  if (!Number.isInteger(minute) || minute < 0 || minute > 59) {
+    return { ok: false, error: "Minute must be 0-59." };
+  }
+
+  const cron = `${minute} ${hour} * * ${dow}`;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("settings")
+    .upsert({ id: 1, weekly_cron: cron }, { onConflict: "id" });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/settings");
+  return { ok: true };
+}

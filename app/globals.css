@@ -31,6 +31,9 @@
   --line-soft: #efeee9;
   --surface: #ffffff;
   --surface-2: #faf9f5;
+  /* hard 2px borders on cards/tables/buttons; softened in dark where
+     near-white outlines read as glare */
+  --border-strong: var(--ink);
 
   /* ---- status tones (fg + bg pairs) ---- */
   --tone-info: #2d6cdf;
@@ -100,6 +103,7 @@
    picked light. Only neutrals + tone pairs change; brand colors stay. */
 html[data-theme="dark"] {
   --page-bg: #15161a;
+  --border-strong: #4a4e58;
   --ink: #e8e8ec;
   --ink-soft: #b3b6c0;
   --ink-faint: #8b8f9a;
@@ -124,6 +128,7 @@ html[data-theme="dark"] {
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) {
     --page-bg: #15161a;
+    --border-strong: #4a4e58;
     --ink: #e8e8ec;
     --ink-soft: #b3b6c0;
     --ink-faint: #8b8f9a;
@@ -256,8 +261,8 @@ main {
 .theme-toggle {
   border: none;
   background: none;
-  padding: var(--s1);
-  font-size: 1rem;
+  padding: var(--s2);
+  font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
   color: var(--ink-soft);
@@ -292,7 +297,7 @@ main {
 /* ---- cards ---- */
 .card {
   background: var(--surface);
-  border: 2px solid var(--ink);
+  border: 2px solid var(--border-strong);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: var(--s3);
@@ -342,7 +347,7 @@ main {
 .grant-card {
   display: block;
   background: var(--surface);
-  border: 2px solid var(--ink);
+  border: 2px solid var(--border-strong);
   border-radius: var(--radius);
   box-shadow: 3px 3px 0 var(--ink);
   padding: var(--s3);
@@ -530,7 +535,7 @@ main {
   gap: var(--s1);
   padding: var(--s2) var(--s3);
   border-radius: var(--radius-sm);
-  border: 2px solid var(--ink);
+  border: 2px solid var(--border-strong);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -668,7 +673,7 @@ textarea {
 /* ---- data table ---- */
 .table-wrap {
   overflow-x: auto;
-  border: 2px solid var(--ink);
+  border: 2px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: 3px 3px 0 var(--ink);
@@ -687,7 +692,7 @@ textarea {
   letter-spacing: 0.06em;
   color: var(--ink-faint);
   padding: var(--s2) var(--s3);
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 2px solid var(--border-strong);
   white-space: nowrap;
   background: var(--surface-2);
 }
@@ -1012,7 +1017,7 @@ input[type="radio"] {
 .feedback-fab {
   padding: var(--s2) var(--s3);
   border-radius: 999px;
-  border: 2px solid var(--ink);
+  border: 2px solid var(--border-strong);
   background: var(--brand-primary);
   color: #fff;
   font-family: var(--mono);
@@ -1121,7 +1126,7 @@ input[type="radio"] {
   max-height: 160px;
   object-fit: cover;
   object-position: top;
-  border: 2px solid var(--ink);
+  border: 2px solid var(--border-strong);
   border-radius: var(--radius-sm);
 }
 .feedback-done a {
@@ -1209,7 +1214,7 @@ input[type="radio"] {
   gap: var(--s3);
   align-items: flex-start;
   padding: var(--s3);
-  border: 2px solid var(--ink);
+  border: 2px solid var(--border-strong);
   border-radius: var(--radius-sm);
   box-shadow: 2px 2px 0 var(--line);
   cursor: pointer;
@@ -1250,4 +1255,27 @@ input[type="radio"] {
 .onb-help-item p {
   margin: var(--s1) 0 0;
   font-size: 0.9rem;
+}
+
+/* ---- collapsible cut-candidates list (Runs page) ---- */
+.cuts > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.cuts > summary::-webkit-details-marker {
+  display: none;
+}
+.cuts > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: var(--s2);
+  color: var(--ink-faint);
+  transition: transform 0.15s ease;
+}
+.cuts[open] > summary::before {
+  transform: rotate(90deg);
+}
+.cut-item {
+  border-left: 3px solid var(--tone-bad);
+  padding-left: var(--s3);
 }

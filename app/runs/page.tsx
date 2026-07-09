@@ -244,39 +244,55 @@ export default async function RunsPage() {
 
       {cuts.length > 0 ? (
         <Card>
-          <h3>Recently cut candidates</h3>
-          <p className="muted">
-            Rejected by the Skeptic or Judge before reaching the board. The
-            reasoning feeds back into future runs.
-          </p>
-          <div className="stack" style={{ gap: "var(--s3)" }}>
-            {cuts.map((cut) => {
-              const claim = cut.finder_claim ?? {};
-              const skeptic = cut.skeptic_verdict ?? {};
-              const judge = cut.judge_ruling ?? {};
-              const funder = str(claim.funder) ?? cut.candidate_key ?? "Unknown candidate";
-              const program = str(claim.program_name);
-              const killShot = str(skeptic.kill_shot);
-              const rationale = str(judge.notes) ?? str(judge.alignment_rationale);
-              return (
-                <div key={cut.id}>
-                  <div className="row" style={{ gap: "var(--s2)", alignItems: "baseline" }}>
-                    <strong>
-                      {funder}
-                      {program ? ` — ${program}` : ""}
-                    </strong>
-                    <Chip label="Cut" tone="bad" />
+          <details className="cuts">
+            <summary>
+              <h3 style={{ display: "inline", margin: 0 }}>
+                Recently cut candidates
+              </h3>{" "}
+              <span className="muted">
+                {cuts.length} rejected by the Skeptic or Judge before reaching
+                the board
+              </span>
+            </summary>
+            <div className="stack" style={{ gap: "var(--s3)", marginTop: "var(--s3)" }}>
+              {cuts.map((cut) => {
+                const claim = cut.finder_claim ?? {};
+                const skeptic = cut.skeptic_verdict ?? {};
+                const judge = cut.judge_ruling ?? {};
+                const funder = str(claim.funder) ?? cut.candidate_key ?? "Unknown candidate";
+                const program = str(claim.program_name);
+                const url = str(claim.application_url) ?? str(claim.source_url);
+                const killShot = str(skeptic.kill_shot);
+                const rationale = str(judge.notes) ?? str(judge.alignment_rationale);
+                return (
+                  <div key={cut.id} className="cut-item">
+                    <div className="row" style={{ gap: "var(--s2)", alignItems: "baseline", flexWrap: "wrap" }}>
+                      <strong>
+                        {url ? (
+                          <a href={url} target="_blank" rel="noreferrer">
+                            {funder}
+                            {program ? ` - ${program}` : ""} ↗
+                          </a>
+                        ) : (
+                          <>
+                            {funder}
+                            {program ? ` - ${program}` : ""}
+                          </>
+                        )}
+                      </strong>
+                      <Chip label="Cut" tone="bad" />
+                    </div>
+                    {killShot ? <p style={{ margin: "var(--s1) 0 0" }}>{killShot}</p> : null}
+                    {rationale ? (
+                      <p className="muted" style={{ margin: "var(--s1) 0 0" }}>
+                        {rationale}
+                      </p>
+                    ) : null}
                   </div>
-                  {killShot ? <p style={{ margin: "var(--s1) 0 0" }}>{killShot}</p> : null}
-                  {rationale ? (
-                    <p className="muted" style={{ margin: "var(--s1) 0 0" }}>
-                      {rationale}
-                    </p>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </details>
         </Card>
       ) : null}
     </div>

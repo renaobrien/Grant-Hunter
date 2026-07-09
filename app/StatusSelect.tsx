@@ -4,16 +4,14 @@ import { useState, useTransition, type ChangeEvent, type MouseEvent } from "reac
 import { GRANT_STATUSES, type GrantStatus } from "@/lib/types";
 import { updateGrantStatus } from "./actions";
 
+// One label per real state; the select is how a grant moves between board
+// columns (Searched -> Working on -> Submitted -> Closed).
 const STATUS_LABELS: Record<GrantStatus, string> = {
   found: "Found",
-  researching: "Researching",
-  drafting: "Drafting",
-  applied: "Applied",
+  drafting: "Working on it",
   submitted: "Submitted",
   awarded: "Awarded",
-  passed: "Passed",
-  discarded: "Discarded",
-  dead: "Dead",
+  dead: "Dead (not pursuing)",
 };
 
 export default function StatusSelect({

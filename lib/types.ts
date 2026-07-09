@@ -208,16 +208,15 @@ export interface NotificationChannelRow {
 // ---------------------------------------------------------------------------
 // Enum const arrays (source of truth for selects / validation in the UI)
 // ---------------------------------------------------------------------------
+// Five statuses, one per real-world state. (2026-07 simplification: the old
+// researching/applied/passed/discarded values collapsed into these - migration
+// 0009 remaps existing rows.)
 export const GRANT_STATUSES = [
-  "found",
-  "researching",
-  "drafting",
-  "applied",
-  "submitted",
-  "awarded",
-  "passed",
-  "discarded",
-  "dead",
+  "found", // discovered, not yet worked on
+  "drafting", // actively working the application
+  "submitted", // application is in
+  "awarded", // won
+  "dead", // not pursuing / lost / expired
 ] as const satisfies readonly GrantStatus[];
 
 export const REJECTION_REASONS = [
@@ -240,11 +239,7 @@ export interface StatusColumn {
 
 export const STATUS_COLUMNS: StatusColumn[] = [
   { key: "searched", label: "Searched", statuses: ["found"] },
-  { key: "active", label: "Active", statuses: ["researching", "drafting"] },
-  { key: "pending", label: "Pending", statuses: ["applied", "submitted"] },
-  {
-    key: "closed",
-    label: "Closed",
-    statuses: ["awarded", "passed", "discarded", "dead"],
-  },
+  { key: "active", label: "Working on", statuses: ["drafting"] },
+  { key: "pending", label: "Submitted", statuses: ["submitted"] },
+  { key: "closed", label: "Closed", statuses: ["awarded", "dead"] },
 ];

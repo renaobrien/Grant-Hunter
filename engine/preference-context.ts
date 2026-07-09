@@ -57,7 +57,7 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
   const list = (grants ?? []) as ScoredGrant[];
 
   const applied = list
-    .filter((g) => ["applied", "submitted", "awarded"].includes(g.status ?? ""))
+    .filter((g) => ["submitted", "awarded"].includes(g.status ?? ""))
     .slice(0, 5)
     .map((g) => `${label(g)} (${g.framing_angle ?? "no angle"}; fit ${g.fit_score ?? "?"}/5)`);
 
@@ -91,7 +91,7 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
   const boardPassed = list
     .filter(
       (g) =>
-        ["passed", "discarded", "dead"].includes(g.status ?? "") &&
+        ["dead"].includes(g.status ?? "") &&
         g.human_score == null,
     )
     .slice(0, 6)

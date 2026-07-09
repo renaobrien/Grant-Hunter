@@ -45,7 +45,15 @@ function formatDeadline(deadline: string | null): string {
   return deadline;
 }
 
-export default async function BoardPage() {
+export default async function BoardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ closed?: string }>;
+}) {
+  // ?closed=hidden collapses the Closed lane so a long dead-pile stays out of
+  // the way. Plain links (no client state) keep this a server component.
+  const { closed } = await searchParams;
+  const hideClosed = closed === "hidden";
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("grants")
@@ -83,6 +91,9 @@ export default async function BoardPage() {
             board
           </p>
         </div>
+        <Link className="btn btn-sm" href={hideClosed ? "/" : "/?closed=hidden"}>
+          {hideClosed ? "Show Closed lane" : "Hide Closed lane"}
+        </Link>
       </div>
 
       {error ? (
@@ -92,7 +103,9 @@ export default async function BoardPage() {
         />
       ) : (
         <div className="board">
-          {STATUS_COLUMNS.map((col) => {
+          {STATUS_COLUMNS.filter(
+            (col) => !(hideClosed && col.key === "closed"),
+          ).map((col) => {
             const items = col.statuses.flatMap(
               (s) => byStatus.get(s) ?? [],
             );

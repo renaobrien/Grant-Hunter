@@ -81,7 +81,14 @@ let cachedClient: Anthropic | null = null;
 let cachedKey = "";
 function getClient(apiKey: string): Anthropic {
   if (!cachedClient || cachedKey !== apiKey) {
-    cachedClient = new Anthropic({ apiKey, maxRetries: 3 });
+    // timeout: web-search-heavy Finder calls legitimately run past the SDK's
+    // ~10-minute default and were dying with "Request timed out." mid-run.
+    // 25 min covers a slow multi-search turn; retries stay for 429/5xx.
+    cachedClient = new Anthropic({
+      apiKey,
+      maxRetries: 3,
+      timeout: 25 * 60 * 1000,
+    });
     cachedKey = apiKey;
   }
   return cachedClient;

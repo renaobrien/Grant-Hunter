@@ -48,13 +48,9 @@ export type RejectionReason =
 
 export type GrantStatus =
   | "found"
-  | "researching"
   | "drafting"
-  | "applied"
   | "submitted"
   | "awarded"
-  | "passed"
-  | "discarded"
   | "dead";
 
 /** A grant candidate as proposed by the Finder (pre-adjudication). */
