@@ -8,6 +8,7 @@ import {
 } from "@/lib/types";
 import { Chip, ScorePips, EmptyState, type ChipTone } from "@/components/ui";
 import RunDiscoveryButton from "@/components/RunDiscoveryButton";
+import StopDiscoveryButton from "@/components/StopDiscoveryButton";
 import StatusSelect from "./StatusSelect";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,13 @@ export default async function BoardPage() {
   const grants = (data ?? []) as CardGrant[];
   // The in-app run button needs a long-lived machine (local/self-host).
   const canRunHere = !process.env.VERCEL;
+  const { data: runningRow } = await supabase
+    .from("agent_runs")
+    .select("id")
+    .eq("status", "running")
+    .limit(1)
+    .maybeSingle();
+  const hasRunning = Boolean(runningRow);
 
   const byStatus = new Map<GrantStatus, CardGrant[]>();
   for (const g of grants) {
@@ -102,11 +110,19 @@ export default async function BoardPage() {
                           title="Nothing here yet"
                           hint={
                             canRunHere
-                              ? "Run discovery and your agents will fill this board."
-                              : "Run discovery to fill this board (GitHub -> Actions -> Weekly grant discovery -> Run workflow)."
+                              ? hasRunning
+                                ? "A discovery run is in progress - grants appear here as they land."
+                                : "Run discovery and your agents will fill this board."
+                              : 'Run discovery from your GitHub repo: Actions tab -> "Weekly grant discovery" -> "Run workflow".'
                           }
                         />
-                        {canRunHere ? <RunDiscoveryButton label="Find grants now" /> : null}
+                        {canRunHere ? (
+                          hasRunning ? (
+                            <StopDiscoveryButton />
+                          ) : (
+                            <RunDiscoveryButton label="Find grants now" />
+                          )
+                        ) : null}
                       </div>
                     ) : (
                       <EmptyState

@@ -36,7 +36,8 @@ const RUN_MODES: {
   {
     value: "manual",
     title: "Manually for now",
-    blurb: "Nothing runs on its own - you trigger a search whenever you want.",
+    blurb:
+      "Nothing runs on its own - press Run discovery on the board or Runs page whenever you want.",
     note: "You can switch to automatic later in Settings.",
   },
 ];

@@ -84,6 +84,7 @@ export async function runDiscovery(
   }
 
   let priorNotes: string | undefined;
+  const fast = settings.speed_mode === "fast";
 
   for (let round = 1; round <= settings.discovery_rounds; round++) {
     if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) <= 0) {
@@ -102,7 +103,7 @@ export async function runDiscovery(
 
     // 1) Finder proposes
     const { candidates } = await tracked(sb, "finder", trigger, { round, runId }, () =>
-      runFinder({ apiKey: opts.apiKey, profile, preferenceContext, today, priorNotes, exclusions }),
+      runFinder({ apiKey: opts.apiKey, profile, preferenceContext, today, priorNotes, exclusions, fast }),
     );
     if (!candidates.length) {
       summary.stopped = summary.stopped ?? "finder returned no candidates";
@@ -111,7 +112,7 @@ export async function runDiscovery(
 
     // 2) Skeptic refutes
     const { verdicts } = await tracked(sb, "skeptic", trigger, { round, runId, n: candidates.length }, () =>
-      runSkeptic({ apiKey: opts.apiKey, profile, candidates }),
+      runSkeptic({ apiKey: opts.apiKey, profile, candidates, fast }),
     );
     if (verdicts.length !== candidates.length) {
       console.warn(
@@ -137,19 +138,23 @@ export async function runDiscovery(
     };
     const verdictFor = (i: number): SkepticVerdict | undefined => verdicts[i];
 
-    // persist debate + upsert survivors
+    // persist debate (concurrently - independent rows) + upsert survivors
+    await Promise.all(
+      candidates.map((c, i) =>
+        writeDebate(sb, {
+          run_id: runId,
+          round,
+          candidate_key: candidateKey(c),
+          finder_claim: c,
+          skeptic_verdict: verdictFor(i) ?? null,
+          judge_ruling: rulingFor(c, i) ?? null,
+        }),
+      ),
+    );
+
     for (let i = 0; i < candidates.length; i++) {
       const c = candidates[i];
       const ruling = rulingFor(c, i) ?? null;
-      await writeDebate(sb, {
-        run_id: runId,
-        round,
-        candidate_key: candidateKey(c),
-        finder_claim: c,
-        skeptic_verdict: verdictFor(i) ?? null,
-        judge_ruling: ruling,
-      });
-
       // Code-level guard on the Judge's own survival rule (fit_score >= 3),
       // in case the model marks survives=true on a record that breaks it.
       if (ruling?.survives && ruling.fit_score >= 3) {

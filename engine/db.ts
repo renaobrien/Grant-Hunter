@@ -84,18 +84,18 @@ export interface Settings {
   discovery_rounds: number;
   discovery_target_survivors: number;
   daily_budget_usd: number;
+  speed_mode: "thorough" | "fast";
 }
 
 export async function loadSettings(sb: SupabaseClient): Promise<Settings> {
-  const { data } = await sb
-    .from("settings")
-    .select("discovery_rounds, discovery_target_survivors, daily_budget_usd")
-    .eq("id", 1)
-    .single();
+  // select("*") so instances that haven't applied a newer migration (e.g.
+  // 0008 speed_mode) still load fine and get the default.
+  const { data } = await sb.from("settings").select("*").eq("id", 1).single();
   return {
     discovery_rounds: data?.discovery_rounds ?? 2,
     discovery_target_survivors: data?.discovery_target_survivors ?? 5,
     daily_budget_usd: Number(data?.daily_budget_usd ?? 5),
+    speed_mode: data?.speed_mode === "fast" ? "fast" : "thorough",
   };
 }
 

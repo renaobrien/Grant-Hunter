@@ -64,8 +64,12 @@ async function dispatchTelegram(cfg: Record<string, unknown>, text: string): Pro
   await postWebhook(`https://api.telegram.org/bot${token}/sendMessage`, {
     chat_id: chatId,
     text: clip(text),
+    parse_mode: "HTML",
   });
 }
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 async function dispatchEmail(
   cfg: Record<string, unknown>,
@@ -96,15 +100,17 @@ async function dispatchEmail(
   if (error) throw new Error(`resend error: ${error.message ?? String(error)}`);
 }
 
+// Per-channel markup: Slack mrkdwn bold, Discord markdown bold, Telegram HTML
+// (body escaped so grant names with & / < don't break the payload).
 async function dispatchOne(row: ChannelRow, subject: string, text: string): Promise<void> {
   const cfg = row.config ?? {};
   switch (row.channel) {
     case "slack":
-      return dispatchSlack(cfg, `${subject}\n\n${text}`);
+      return dispatchSlack(cfg, `*${subject}*\n\n${text}`);
     case "discord":
-      return dispatchDiscord(cfg, `${subject}\n\n${text}`);
+      return dispatchDiscord(cfg, `**${subject}**\n\n${text}`);
     case "telegram":
-      return dispatchTelegram(cfg, `${subject}\n\n${text}`);
+      return dispatchTelegram(cfg, `<b>${escapeHtml(subject)}</b>\n\n${escapeHtml(text)}`);
     case "email":
       return dispatchEmail(cfg, subject, text);
     default:

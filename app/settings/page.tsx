@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { authDisabled, createClient } from "@/lib/supabase/server";
 import { Card, FieldRow, Chip } from "@/components/ui";
 import type {
   NotificationChannel,
@@ -107,11 +107,26 @@ export default async function SettingsPage() {
         </div>
       </div>
 
+      {authDisabled() ? (
+        <Card>
+          <h2>
+            Login is off <Chip label="Heads up" tone="warn" />
+          </h2>
+          <p className="muted" style={{ marginBottom: 0 }}>
+            Anyone who can reach this machine&rsquo;s port has full control of
+            this instance - keys, spend, data, and updates. That&rsquo;s fine on
+            localhost. If this instance is reachable from anywhere else, set{" "}
+            <code>REQUIRE_LOGIN=true</code> in <code>.env.local</code> and add
+            yourself to the <code>members</code> table (see DEPLOY.md).
+          </p>
+        </Card>
+      ) : null}
+
       <Card>
         <h2>API keys</h2>
         <p className="muted">
-          The Anthropic key the agents spend. Set it here and you never need to
-          touch <code>.env.local</code> - it&rsquo;s stored on your own database.
+          The Anthropic key the agents spend. Stored in your own database,
+          never shown back to the browser.
         </p>
         <ApiKeysForm hasKey={hasAnthropicKey} source={keySource} />
       </Card>
@@ -125,6 +140,7 @@ export default async function SettingsPage() {
             discovery_target_survivors:
               settings?.discovery_target_survivors ?? 5,
             preference_summary: settings?.preference_summary ?? "",
+            speed_mode: settings?.speed_mode ?? "thorough",
           }}
         />
       </Card>
@@ -138,8 +154,10 @@ export default async function SettingsPage() {
           </span>
         </FieldRow>
         <p className="muted" style={{ marginTop: "var(--s3)", marginBottom: 0 }}>
-          Schedule lives in <code>.github/workflows/discovery.yml</code> - edit
-          it there to change the cadence.
+          Automatic weekly runs are off until you uncomment the{" "}
+          <code>schedule:</code> block in{" "}
+          <code>.github/workflows/discovery.yml</code>. The button on the Runs
+          page starts one anytime.
         </p>
       </Card>
 
@@ -155,9 +173,7 @@ export default async function SettingsPage() {
       {canSelfUpdate ? (
         <Card>
           <h2>Updates</h2>
-          <p className="muted">
-            Pulls the latest app code straight from GitHub - no re-downloading.
-          </p>
+          <p className="muted">Updates the app from GitHub.</p>
           <UpdatePanel />
         </Card>
       ) : null}

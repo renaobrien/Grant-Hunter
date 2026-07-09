@@ -6,6 +6,11 @@ import { createClient, authDisabled } from "@/lib/supabase/server";
 import HealthHeader from "@/components/HealthHeader";
 import FeedbackButton from "@/components/FeedbackButton";
 import ConsoleCapture from "@/components/ConsoleCapture";
+import ThemeToggle from "@/components/ThemeToggle";
+
+// Applies the stored theme before first paint so dark mode doesn't flash
+// light. No stored choice = follow the OS (handled in CSS).
+const THEME_SCRIPT = `try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}`;
 
 export const dynamic = "force-dynamic";
 
@@ -72,10 +77,15 @@ export default async function RootLayout({
   const orgName = org ? `${org} Grant Hunter` : "Grant Hunter";
 
   return (
-    <html lang="en">
+    // Brand vars live on <html> so body { background: var(--page-bg) } and
+    // everything below can resolve them.
+    <html lang="en" style={brandVars} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
         <ConsoleCapture />
-        <div style={brandVars}>
+        <div>
           <nav className="app-nav">
             <Link href="/" className="brand">
               {brand?.logo_url ? (
@@ -91,6 +101,7 @@ export default async function RootLayout({
               <Link href="/runs">Runs</Link>
               <Link href="/profile">Profile</Link>
               <Link href="/settings">Settings</Link>
+              <ThemeToggle />
             </div>
           </nav>
           <HealthHeader />

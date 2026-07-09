@@ -8,6 +8,7 @@ export interface SettingsFormInitial {
   discovery_rounds: number;
   discovery_target_survivors: number;
   preference_summary: string;
+  speed_mode: "thorough" | "fast";
 }
 
 export default function SettingsForm({
@@ -21,6 +22,7 @@ export default function SettingsForm({
     String(initial.discovery_target_survivors),
   );
   const [summary, setSummary] = useState(initial.preference_summary);
+  const [speed, setSpeed] = useState<"thorough" | "fast">(initial.speed_mode);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -33,6 +35,7 @@ export default function SettingsForm({
         discovery_rounds: Number(rounds),
         discovery_target_survivors: Number(survivors),
         preference_summary: summary.trim() || null,
+        speed_mode: speed,
       });
       setMsg(
         res.ok
@@ -86,6 +89,32 @@ export default function SettingsForm({
           />
           <span className="field-hint">Candidates to carry past filtering.</span>
         </div>
+      </div>
+
+      <div className="field">
+        <span className="field-label" style={{ fontWeight: 600 }}>
+          Discovery speed
+        </span>
+        <label className="row" style={{ gap: "var(--s2)", fontWeight: 400 }}>
+          <input
+            type="radio"
+            name="speed_mode"
+            value="thorough"
+            checked={speed === "thorough"}
+            onChange={() => setSpeed("thorough")}
+          />
+          Thorough - strongest vetting, slower and pricier
+        </label>
+        <label className="row" style={{ gap: "var(--s2)", fontWeight: 400 }}>
+          <input
+            type="radio"
+            name="speed_mode"
+            value="fast"
+            checked={speed === "fast"}
+            onChange={() => setSpeed("fast")}
+          />
+          Fast - quicker and cheaper, lighter fact-checking
+        </label>
       </div>
 
       <div className="field">

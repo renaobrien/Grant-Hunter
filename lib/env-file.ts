@@ -4,7 +4,7 @@
 // middleware (edge runtime) or client components. Deliberately no
 // `import "server-only"`: that package throws under tsx and would break setup.
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 export const ENV_PATH = ".env.local";
@@ -43,7 +43,14 @@ export function writeEnv(env: Record<string, string>) {
   const lines = [...keys, ...extras]
     .filter((k) => env[k] !== undefined && env[k] !== "")
     .map((k) => `${k}=${env[k]}`);
-  writeFileSync(envPath(), lines.join("\n") + "\n");
+  // Owner-only: this file holds the service-role key. mode applies on create;
+  // chmod fixes files written before this hardening (no-op fail on Windows).
+  writeFileSync(envPath(), lines.join("\n") + "\n", { mode: 0o600 });
+  try {
+    chmodSync(envPath(), 0o600);
+  } catch {
+    // Windows or exotic fs - best effort.
+  }
 }
 
 const REF = /^[a-z0-9]{20}$/;

@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { startDiscovery } from "@/app/runs/actions";
 
 const POLL_MS = 5000;
-const POLL_FOR_MS = 2 * 60 * 1000;
+const POLL_FOR_MS = 10 * 60 * 1000;
 
 export default function RunDiscoveryButton({ label = "Run discovery now" }: { label?: string }) {
   const router = useRouter();

@@ -30,7 +30,7 @@ npm run db:push
 ```
 
 > No local checkout at all? Open your Supabase project → **SQL Editor** and run
-> the files in `supabase/migrations/` in order (0001 → 0007), pasting each one.
+> the files in `supabase/migrations/` in order (0001 → 0008), pasting each one.
 
 ## 2. Import the repo into Vercel
 
@@ -69,7 +69,8 @@ npm run db:push
 So the magic-link email redirects back correctly:
 
 1. Supabase → **Authentication → URL Configuration**.
-2. Set **Site URL** to your Vercel URL.
+2. Set **Site URL** to your Vercel URL - it must match `APP_BASE_URL` exactly
+   (scheme included, no trailing slash).
 3. Add `https://your-app.vercel.app/auth/callback` under **Redirect URLs**.
 
 ## 4. First sign-in + finish setup in the browser
@@ -87,6 +88,9 @@ So the magic-link email redirects back correctly:
 4. Finish **onboarding** (it interviews you and builds your org profile).
 5. Turn on any notification channels under **Settings → Notifications**.
 
+   > Email needs a Resend API key **and** a `from` address on a domain you've
+   > verified in Resend - unverified senders are rejected.
+
 ## 5. (Optional) Automatic weekly discovery
 
 Discovery/jobs run via **GitHub Actions** (`.github/workflows/*.yml`), not
@@ -101,8 +105,32 @@ add:
 That's it - your instance is live, self-updating (push to GitHub → Vercel
 redeploys), and runs discovery on schedule.
 
+## Alternative: your own server (VPS / home machine)
+
+Any box that can run Node 22 works, and unlike serverless it keeps the in-app
+**Run discovery**, **Stop run**, and **Updates** buttons:
+
+```bash
+git clone <your-repo> && cd <repo> && npm install
+npm run setup        # writes .env.local, applies schema, seeds the owner
+npm run build && npm run start   # serves on :3000
+```
+
+- Put it behind a reverse proxy with HTTPS (Caddy/nginx) and set
+  `REQUIRE_LOGIN=true` in `.env.local` **before** exposing it - without login,
+  anyone who can reach the port controls the instance.
+- Set `APP_BASE_URL` to your public URL and do step 3 (Supabase auth URLs).
+- Scheduled runs without GitHub: cron the CLI entrypoints on the same box:
+
+  ```cron
+  0 12 * * 1    cd /path/to/repo && npm run discover
+  */30 * * * *  cd /path/to/repo && npm run jobs
+  ```
+
 ## Updating later
 
 Because you deployed from GitHub, updates are just: pull upstream changes into
 your repo (or click **Sync fork** on GitHub) → Vercel redeploys automatically.
-If an update adds new migrations, run `npm run db:push` once more (step 1).
+On your own server it's `git pull` + `npm install` + restart (or the in-app
+Updates button). If an update adds new migrations, run `npm run db:push` once
+more (step 1).

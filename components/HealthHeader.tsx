@@ -27,30 +27,22 @@ export default async function HealthHeader() {
   try {
     const supabase = await createClient();
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const todayISO = startOfToday.toISOString();
-
-    const [lastRunRes, runsRes, settingsRes, grantsRes] = await Promise.all([
+    const [lastRunRes, spentRes, settingsRes, grantsRes] = await Promise.all([
       supabase
         .from("agent_runs")
         .select("started_at")
         .order("started_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
-      supabase
-        .from("agent_runs")
-        .select("cost_cents")
-        .gte("started_at", todayISO),
+      // Same SQL helper the budget cap enforces against (UTC day boundary),
+      // so the header always agrees with what the engine will actually do.
+      supabase.rpc("spent_cents_today"),
       supabase.from("settings").select("daily_budget_usd").eq("id", 1).maybeSingle(),
       supabase.from("grants").select("id", { count: "exact", head: true }),
     ]);
 
     lastRun = lastRunRes.data?.started_at ?? null;
-    spentCents = (runsRes.data ?? []).reduce(
-      (sum, r) => sum + (r.cost_cents ?? 0),
-      0,
-    );
+    spentCents = Number(spentRes.data ?? 0);
     const budgetRaw = settingsRes.data?.daily_budget_usd;
     budgetUsd = budgetRaw == null ? null : Number(budgetRaw);
     grantCount = grantsRes.count ?? null;

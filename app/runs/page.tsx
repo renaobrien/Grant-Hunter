@@ -1,10 +1,14 @@
-// Runs page - history of agent_runs (discovery, drafting, etc.) plus a local
-// "run discovery now" button (spawns the engine in-process; see
-// app/runs/actions.ts). Hosted instances keep the GitHub Actions path.
+// Runs page - history of agent_runs (discovery, drafting, etc.) plus local
+// start/stop controls (see app/runs/actions.ts). Hosted instances trigger
+// runs from GitHub Actions instead.
+import { Fragment } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, Chip, EmptyState, type ChipTone } from "@/components/ui";
 import RunDiscoveryButton from "@/components/RunDiscoveryButton";
-import type { AgentRunRow, AgentRunStatus } from "@/lib/types";
+import StopDiscoveryButton from "@/components/StopDiscoveryButton";
+import LocalTime from "@/components/LocalTime";
+import { sweepStaleRuns } from "@/lib/run-control";
+import type { AgentRunRow, AgentRunStatus, DebateRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -19,24 +23,6 @@ const STATUS_LABEL: Record<AgentRunStatus, string> = {
   success: "Success",
   error: "Error",
 };
-
-// Deterministic (UTC, fixed locale) so server render never depends on the host
-// timezone. e.g. "Jul 7, 2026, 12:04 PM".
-const DATE_FMT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "UTC",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
-
-function formatStarted(iso: string | null): string {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return `${DATE_FMT.format(d)} UTC`;
-}
 
 function formatDuration(ms: number | null): string {
   if (ms == null) return "-";
@@ -60,17 +46,69 @@ function truncate(text: string | null, max = 90): string {
   return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
 }
 
+// One discovery run spawns several agent calls (finder, skeptic, judge per
+// round). They share input_data.runId, so group them under one header.
+interface RunGroup {
+  key: string;
+  runId: string | null;
+  rows: AgentRunRow[];
+}
+
+function groupRuns(runs: AgentRunRow[]): RunGroup[] {
+  const groups: RunGroup[] = [];
+  const byRunId = new Map<string, RunGroup>();
+  for (const run of runs) {
+    const raw = run.input_data?.runId;
+    const runId = typeof raw === "string" && raw ? raw : null;
+    if (runId) {
+      const existing = byRunId.get(runId);
+      if (existing) {
+        existing.rows.push(run);
+        continue;
+      }
+      const group = { key: runId, runId, rows: [run] };
+      byRunId.set(runId, group);
+      groups.push(group);
+    } else {
+      groups.push({ key: run.id, runId: null, rows: [run] });
+    }
+  }
+  return groups;
+}
+
+function groupStatus(rows: AgentRunRow[]): AgentRunStatus {
+  if (rows.some((r) => r.status === "running")) return "running";
+  if (rows.some((r) => r.status === "error")) return "error";
+  return "success";
+}
+
+const str = (v: unknown): string | null =>
+  typeof v === "string" && v.trim() ? v : null;
+
 export default async function RunsPage() {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("agent_runs")
-    .select(
-      "id, agent_type, trigger_type, status, started_at, duration_ms, tokens_used, cost_cents, error_message",
-    )
-    .order("started_at", { ascending: false, nullsFirst: false })
-    .limit(50);
+  await sweepStaleRuns(supabase);
+
+  const [{ data, error }, { data: cutsData }] = await Promise.all([
+    supabase
+      .from("agent_runs")
+      .select(
+        "id, agent_type, trigger_type, status, started_at, duration_ms, tokens_used, cost_cents, error_message, input_data",
+      )
+      .order("started_at", { ascending: false, nullsFirst: false })
+      .limit(50),
+    supabase
+      .from("agent_debate")
+      .select("id, created_at, candidate_key, finder_claim, skeptic_verdict, judge_ruling")
+      .filter("judge_ruling->>survives", "eq", "false")
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
 
   const runs = (data ?? []) as AgentRunRow[];
+  const cuts = (cutsData ?? []) as DebateRow[];
+  const groups = groupRuns(runs);
+  const hasRunning = runs.some((r) => r.status === "running");
   // In-process runs need a long-lived machine (local/self-host), not serverless.
   const canRunHere = !process.env.VERCEL;
 
@@ -83,21 +121,28 @@ export default async function RunsPage() {
       <Card className="note-panel">
         <h3>Run discovery now</h3>
         {canRunHere ? (
-          <>
-            <p>
-              Sends your agents hunting for new grants that match your profile.
-            </p>
-            <RunDiscoveryButton />
-            <p className="muted" style={{ marginTop: "var(--s3)", marginBottom: 0 }}>
-              Scheduled runs also work: <code>npm run discover</code> in a
-              terminal, or the <code>Weekly grant discovery</code> workflow in
-              your GitHub repo&apos;s Actions tab.
-            </p>
-          </>
+          hasRunning ? (
+            <>
+              <p>A run is in progress - new rows appear below as agents finish.</p>
+              <StopDiscoveryButton />
+            </>
+          ) : (
+            <>
+              <p>
+                Sends your agents hunting for new grants that match your profile.
+              </p>
+              <RunDiscoveryButton />
+              <p className="muted" style={{ marginTop: "var(--s3)", marginBottom: 0 }}>
+                Prefer the terminal? <code>npm run discover</code> does the same
+                thing.
+              </p>
+            </>
+          )
         ) : (
           <p>
-            On this hosted instance, trigger <code>Weekly grant discovery</code>{" "}
-            from your repository&apos;s GitHub Actions tab.
+            This hosted instance runs discovery through GitHub: open your
+            repo&apos;s Actions tab, pick <code>Weekly grant discovery</code>,
+            and press <em>Run workflow</em>.
           </p>
         )}
       </Card>
@@ -129,39 +174,111 @@ export default async function RunsPage() {
               </tr>
             </thead>
             <tbody>
-              {runs.map((run) => {
-                const status = run.status as AgentRunStatus;
-                const tone = STATUS_TONE[status] ?? "neutral";
-                const label = STATUS_LABEL[status] ?? status;
+              {groups.map((group) => {
+                const grouped = group.runId != null && group.rows.length > 1;
+                const rows = group.rows.map((run) => {
+                  const status = run.status as AgentRunStatus;
+                  const tone = STATUS_TONE[status] ?? "neutral";
+                  const label = STATUS_LABEL[status] ?? status;
+                  return (
+                    <tr key={run.id}>
+                      <td className="nowrap">
+                        {grouped ? (
+                          <span style={{ paddingLeft: "var(--s4)" }}>
+                            {run.agent_type}
+                          </span>
+                        ) : (
+                          run.agent_type
+                        )}
+                      </td>
+                      <td className="nowrap">
+                        <span className="muted">{run.trigger_type}</span>
+                      </td>
+                      <td>
+                        <Chip label={label} tone={tone} />
+                      </td>
+                      <td className="nowrap">
+                        <LocalTime iso={run.started_at} />
+                      </td>
+                      <td className="num">{formatDuration(run.duration_ms)}</td>
+                      <td className="num">{formatTokens(run.tokens_used)}</td>
+                      <td className="num">{formatCost(run.cost_cents)}</td>
+                      <td className="cell-error">
+                        {run.error_message ? (
+                          <span title={run.error_message}>
+                            {truncate(run.error_message)}
+                          </span>
+                        ) : (
+                          <span className="muted">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                });
+                if (!grouped) return rows;
+                const status = groupStatus(group.rows);
                 return (
-                  <tr key={run.id}>
-                    <td className="nowrap">{run.agent_type}</td>
-                    <td className="nowrap">
-                      <span className="muted">{run.trigger_type}</span>
-                    </td>
-                    <td>
-                      <Chip label={label} tone={tone} />
-                    </td>
-                    <td className="nowrap">{formatStarted(run.started_at)}</td>
-                    <td className="num">{formatDuration(run.duration_ms)}</td>
-                    <td className="num">{formatTokens(run.tokens_used)}</td>
-                    <td className="num">{formatCost(run.cost_cents)}</td>
-                    <td className="cell-error">
-                      {run.error_message ? (
-                        <span title={run.error_message}>
-                          {truncate(run.error_message)}
+                  <Fragment key={group.key}>
+                    <tr style={{ background: "var(--surface-2)" }}>
+                      <td colSpan={7}>
+                        <strong>Discovery run</strong>{" "}
+                        <span className="muted">
+                          · {group.rows.length} agent steps
                         </span>
-                      ) : (
-                        <span className="muted">-</span>
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+                      <td>
+                        <Chip
+                          label={STATUS_LABEL[status]}
+                          tone={STATUS_TONE[status]}
+                        />
+                      </td>
+                    </tr>
+                    {rows}
+                  </Fragment>
                 );
               })}
             </tbody>
           </table>
         </div>
       )}
+
+      {cuts.length > 0 ? (
+        <Card>
+          <h3>Recently cut candidates</h3>
+          <p className="muted">
+            Rejected by the Skeptic or Judge before reaching the board. The
+            reasoning feeds back into future runs.
+          </p>
+          <div className="stack" style={{ gap: "var(--s3)" }}>
+            {cuts.map((cut) => {
+              const claim = cut.finder_claim ?? {};
+              const skeptic = cut.skeptic_verdict ?? {};
+              const judge = cut.judge_ruling ?? {};
+              const funder = str(claim.funder) ?? cut.candidate_key ?? "Unknown candidate";
+              const program = str(claim.program_name);
+              const killShot = str(skeptic.kill_shot);
+              const rationale = str(judge.notes) ?? str(judge.alignment_rationale);
+              return (
+                <div key={cut.id}>
+                  <div className="row" style={{ gap: "var(--s2)", alignItems: "baseline" }}>
+                    <strong>
+                      {funder}
+                      {program ? ` — ${program}` : ""}
+                    </strong>
+                    <Chip label="Cut" tone="bad" />
+                  </div>
+                  {killShot ? <p style={{ margin: "var(--s1) 0 0" }}>{killShot}</p> : null}
+                  {rationale ? (
+                    <p className="muted" style={{ margin: "var(--s1) 0 0" }}>
+                      {rationale}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
     </div>
   );
 }

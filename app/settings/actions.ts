@@ -18,6 +18,7 @@ export interface SettingsValues {
   discovery_rounds: number;
   discovery_target_survivors: number;
   preference_summary: string | null;
+  speed_mode: "thorough" | "fast";
 }
 
 // Upsert the settings singleton (id = 1). weekly_cron is intentionally NOT
@@ -36,6 +37,9 @@ export async function saveSettings(vals: SettingsValues): Promise<ActionResult> 
   if (!Number.isInteger(survivors) || survivors < 1) {
     return { ok: false, error: "Target survivors must be a whole number ≥ 1." };
   }
+  if (vals.speed_mode !== "thorough" && vals.speed_mode !== "fast") {
+    return { ok: false, error: "Speed must be 'thorough' or 'fast'." };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("settings").upsert(
@@ -45,6 +49,7 @@ export async function saveSettings(vals: SettingsValues): Promise<ActionResult> 
       discovery_rounds: rounds,
       discovery_target_survivors: survivors,
       preference_summary: vals.preference_summary,
+      speed_mode: vals.speed_mode,
     },
     { onConflict: "id" },
   );

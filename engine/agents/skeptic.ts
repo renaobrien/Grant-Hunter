@@ -14,7 +14,10 @@ export async function runSkeptic(opts: {
   apiKey: string;
   profile: Profile;
   candidates: Candidate[];
+  /** 'fast' drops to the search-tier model with a smaller web-search budget. */
+  fast?: boolean;
 }): Promise<{ verdicts: SkepticVerdict[]; usage: AgentUsage }> {
+  const model = opts.fast ? MODELS.sonnet : MODELS.opus;
   const system = [renderVoice(opts.profile), SKEPTIC_ROLE].join("\n\n");
   const user = [
     "Here are the Finder's candidates as JSON. Try to REFUTE each one - assume it's wrong until the funder's own page proves otherwise.",
@@ -26,9 +29,9 @@ export async function runSkeptic(opts: {
     apiKey: opts.apiKey,
     system,
     userMessage: user,
-    model: MODELS.opus,
+    model,
     maxTokens: 8000,
-    webSearchMaxUses: 8,
+    webSearchMaxUses: opts.fast ? 4 : 8,
   });
 
   const parsed = parseJsonFromResponse(res.text, res.stopReason);
@@ -36,7 +39,7 @@ export async function runSkeptic(opts: {
   return {
     verdicts,
     usage: {
-      model: MODELS.opus,
+      model,
       inputTokens: res.inputTokens,
       outputTokens: res.outputTokens,
       stopReason: res.stopReason,

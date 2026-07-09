@@ -21,6 +21,8 @@ export async function runFinder(opts: {
   /** "Funder - Program" labels of grants already in the pipeline; don't re-propose. */
   exclusions?: string[];
   count?: number;
+  /** 'fast' trims the web-search budget for quicker, cheaper runs. */
+  fast?: boolean;
 }): Promise<{ candidates: Candidate[]; usage: AgentUsage }> {
   const system = [renderVoice(opts.profile), FINDER_ROLE, opts.preferenceContext].join("\n\n");
   const count = opts.count ?? 12;
@@ -46,7 +48,7 @@ export async function runFinder(opts: {
     userMessage: user,
     model: MODELS.sonnet,
     maxTokens: 16000,
-    webSearchMaxUses: 10,
+    webSearchMaxUses: opts.fast ? 6 : 10,
   });
 
   const parsed = parseJsonFromResponse(res.text, res.stopReason);

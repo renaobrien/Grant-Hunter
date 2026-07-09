@@ -6,6 +6,9 @@ dist/
 .env.local
 .env*.local
 *.log
+
+# runtime pidfile + log for in-app discovery runs
+.grant-hunter/
 .DS_Store
 
 # TypeScript / Next.js build artifacts (regenerated)

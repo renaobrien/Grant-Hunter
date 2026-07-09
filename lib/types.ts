@@ -142,6 +142,7 @@ export interface ProfileRow extends Profile {
 // settings
 // ---------------------------------------------------------------------------
 export type RunMode = "github" | "local" | "manual";
+export type SpeedMode = "thorough" | "fast";
 
 export interface SettingsRow {
   id: number;
@@ -151,6 +152,7 @@ export interface SettingsRow {
   preference_summary: string | null;
   weekly_cron: string;
   run_mode: RunMode;
+  speed_mode: SpeedMode;
   anthropic_api_key: string | null;
   created_at: string;
   updated_at: string;

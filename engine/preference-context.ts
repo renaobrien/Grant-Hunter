@@ -86,6 +86,17 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
     .slice(0, 4)
     .map((g) => `${label(g)} (${g.rejection_reason ?? "unspecified"})`);
 
+  // Board-only rejections: moved to passed/discarded/dead without a written
+  // rating. Weaker signal than a scored rejection, but still a signal.
+  const boardPassed = list
+    .filter(
+      (g) =>
+        ["passed", "discarded", "dead"].includes(g.status ?? "") &&
+        g.human_score == null,
+    )
+    .slice(0, 6)
+    .map((g) => `${label(g)} (moved to ${g.status})`);
+
   if (applied.length)
     sections.push(`Grants we actually applied to - find more like these: ${applied.join(" | ")}`);
   if (liked.length) sections.push(`Strong fits we want more of: ${liked.join(" | ")}`);
@@ -100,6 +111,10 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
   if (misaligned.length)
     sections.push(`Poor mission fit - avoid similar program types: ${misaligned.join(" | ")}`);
   if (other.length) sections.push(`Deprioritised for other reasons: ${other.join(" | ")}`);
+  if (boardPassed.length)
+    sections.push(
+      `Moved off the board without a written reason - treat as a mild negative signal and deprioritise similar programs: ${boardPassed.join(" | ")}`,
+    );
 
   const freeform = ((ratings ?? []) as unknown as RatingRow[])
     .filter((r) => r.feedback?.trim())
