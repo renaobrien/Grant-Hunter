@@ -20,6 +20,8 @@ export interface GrantForDraft {
   alignment_rationale: string | null;
   source_url: string | null;
   application_url: string | null;
+  /** The funder's actual application requirements (pasted or extracted), or null. */
+  application_spec: string | null;
 }
 
 /** Render the grant as readable text for the model. Shared by drafter + critic so
@@ -38,7 +40,15 @@ export function renderGrantDetails(g: GrantForDraft): string {
     g.application_url ? `Application URL: ${g.application_url}` : "",
     g.source_url ? `Source URL: ${g.source_url}` : "",
   ].filter(Boolean);
-  return lines.join("\n");
+  const base = lines.join("\n");
+
+  // When the funder's real application is on hand, make it the anchor: the
+  // Drafter answers these questions/limits directly instead of an essay, and
+  // the Critic checks coverage against them.
+  if (g.application_spec && g.application_spec.trim()) {
+    return `${base}\n\nAPPLICATION REQUIREMENTS (the funder's actual questions, limits, and criteria - answer these directly, one labeled section per question, within any stated word/character limits):\n${g.application_spec.trim()}`;
+  }
+  return base;
 }
 
 export async function runDrafter(opts: {
@@ -46,8 +56,12 @@ export async function runDrafter(opts: {
   profile: Profile;
   grant: GrantForDraft;
   priorCritique?: string;
+  /** The teaching loop (getPreferenceContext) - what the org rated well/poorly. */
+  preferenceContext?: string;
 }): Promise<{ draft: string; usage: AgentUsage }> {
-  const system = [renderVoice(opts.profile), DRAFTER_ROLE].join("\n\n");
+  const system = [renderVoice(opts.profile), DRAFTER_ROLE, opts.preferenceContext]
+    .filter(Boolean)
+    .join("\n\n");
   const user = [
     "Write the grant-application narrative for the opportunity below. Anchor it on the framing angle and translate this org's real work into the funder's priorities and vocabulary.",
     `GRANT DETAILS:\n${renderGrantDetails(opts.grant)}`,

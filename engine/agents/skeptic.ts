@@ -34,16 +34,22 @@ export async function runSkeptic(opts: {
     webSearchMaxUses: opts.fast ? 4 : 8,
   });
 
-  const parsed = parseJsonFromResponse(res.text, res.stopReason);
-  const verdicts = Array.isArray(parsed) ? (parsed as SkepticVerdict[]) : [];
-  return {
-    verdicts,
-    usage: {
-      model,
-      inputTokens: res.inputTokens,
-      outputTokens: res.outputTokens,
-      stopReason: res.stopReason,
-      webSearchRequests: res.webSearchRequests,
-    },
+  const usage: AgentUsage = {
+    model,
+    inputTokens: res.inputTokens,
+    outputTokens: res.outputTokens,
+    stopReason: res.stopReason,
+    webSearchRequests: res.webSearchRequests,
   };
+
+  // Carry usage on a parse failure so the spent tokens still hit the daily cap.
+  let parsed: unknown;
+  try {
+    parsed = parseJsonFromResponse(res.text, res.stopReason);
+  } catch (e) {
+    throw Object.assign(e as Error, { usage });
+  }
+
+  const verdicts = Array.isArray(parsed) ? (parsed as SkepticVerdict[]) : [];
+  return { verdicts, usage };
 }

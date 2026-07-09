@@ -79,6 +79,10 @@ export default async function ConnectPage() {
   return (
     <div style={{ maxWidth: 720, margin: "48px auto" }}>
       <ConnectForm mode="form" schemaSql={combinedMigrationsSql()} />
+      <p className="muted" style={{ textAlign: "center", marginTop: "var(--s3)" }}>
+        Want to see what it looks like first?{" "}
+        <a href="/demo">Preview the demo board</a> (sample data, no setup).
+      </p>
     </div>
   );
 }

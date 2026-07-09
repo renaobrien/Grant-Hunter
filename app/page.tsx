@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import {
   STATUS_COLUMNS,
@@ -7,8 +8,11 @@ import {
   type Recommendation,
 } from "@/lib/types";
 import { Chip, ScorePips, EmptyState, type ChipTone } from "@/components/ui";
+import { deadlinePassed, checkedAgo, daysUntilDeadline } from "@/lib/freshness";
 import RunDiscoveryButton from "@/components/RunDiscoveryButton";
 import StopDiscoveryButton from "@/components/StopDiscoveryButton";
+import HideClosedToggle from "@/components/HideClosedToggle";
+import BoardAutoRefresh from "@/components/BoardAutoRefresh";
 import StatusSelect from "./StatusSelect";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +29,8 @@ type CardGrant = Pick<
   | "alignment_score"
   | "recommendation"
   | "status"
+  | "last_verified"
+  | "human_score"
 >;
 
 const REC_TONE: Record<Recommendation, ChipTone> = {
@@ -45,20 +51,16 @@ function formatDeadline(deadline: string | null): string {
   return deadline;
 }
 
-export default async function BoardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ closed?: string }>;
-}) {
-  // ?closed=hidden collapses the Closed lane so a long dead-pile stays out of
-  // the way. Plain links (no client state) keep this a server component.
-  const { closed } = await searchParams;
-  const hideClosed = closed === "hidden";
+export default async function BoardPage() {
+  // "Hide Closed lane" collapses the Closed column so a long dead-pile stays out
+  // of the way. Persisted in a cookie (set by HideClosedToggle) so it survives
+  // reloads and navigation, unlike the old ?closed=hidden URL param.
+  const hideClosed = (await cookies()).get("hide_closed")?.value === "1";
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("grants")
     .select(
-      "id, funder, program_name, amount, deadline, fit_score, alignment_score, recommendation, status",
+      "id, funder, program_name, amount, deadline, fit_score, alignment_score, recommendation, status, last_verified, human_score",
     )
     .order("fit_score", { ascending: false, nullsFirst: false })
     .order("date_added", { ascending: false });
@@ -81,8 +83,20 @@ export default async function BoardPage({
     else byStatus.set(g.status, [g]);
   }
 
+  // "Needs your attention" - a single glance at what to act on, for a one-operator
+  // instance where these signals otherwise stay scattered across pages.
+  const needRating = grants.filter(
+    (g) => g.status === "found" && g.human_score == null,
+  ).length;
+  const dueSoon = grants.filter((g) => {
+    if (g.status !== "found" && g.status !== "drafting") return false;
+    const d = daysUntilDeadline(g.deadline);
+    return d != null && d >= 0 && d <= 7;
+  }).length;
+
   return (
     <div className="stack">
+      <BoardAutoRefresh active={hasRunning} />
       <div className="page-head">
         <div>
           <h1>Pipeline</h1>
@@ -91,10 +105,26 @@ export default async function BoardPage({
             board
           </p>
         </div>
-        <Link className="btn btn-sm" href={hideClosed ? "/" : "/?closed=hidden"}>
-          {hideClosed ? "Show Closed lane" : "Hide Closed lane"}
-        </Link>
+        <HideClosedToggle hidden={hideClosed} />
       </div>
+
+      {needRating > 0 || dueSoon > 0 ? (
+        <div className="attention-strip">
+          <span className="attention-label">Needs your attention</span>
+          {dueSoon > 0 ? (
+            <Chip
+              label={`${dueSoon} deadline${dueSoon === 1 ? "" : "s"} within 7 days`}
+              tone="warn"
+            />
+          ) : null}
+          {needRating > 0 ? (
+            <Chip
+              label={`${needRating} grant${needRating === 1 ? "" : "s"} awaiting your rating`}
+              tone="info"
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {error ? (
         <EmptyState
@@ -159,8 +189,20 @@ export default async function BoardPage({
                           {g.amount ? (
                             <span className="gc-amount">{g.amount}</span>
                           ) : null}
-                          <span>{formatDeadline(g.deadline)}</span>
+                          {deadlinePassed(g.deadline) ? (
+                            <Chip label="Deadline passed" tone="bad" />
+                          ) : (
+                            <span>{formatDeadline(g.deadline)}</span>
+                          )}
                         </div>
+
+                        {checkedAgo(g.last_verified) ? (
+                          <div className="gc-meta">
+                            <span className="gc-checked muted">
+                              {checkedAgo(g.last_verified)}
+                            </span>
+                          </div>
+                        ) : null}
 
                         <div className="gc-meta">
                           <span className="gc-scores">

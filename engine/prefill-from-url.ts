@@ -34,6 +34,38 @@ function htmlToText(html: string): string {
     .trim();
 }
 
+// Common places an org's mission / eligibility lives beyond the homepage.
+const RICH_PATHS = ["/about", "/about-us", "/mission", "/what-we-do", "/programs"];
+
+/**
+ * Like fetchSiteText, but also pulls a few common same-domain sub-pages
+ * (/about, /mission, /programs...) and concatenates them, so onboarding prefill
+ * and profile compile see mission/eligibility that isn't on the homepage. The
+ * base page must be readable (throws otherwise); missing sub-pages are skipped.
+ */
+export async function fetchSiteTextRich(url: string, maxChars = 12_000): Promise<string> {
+  const base = await fetchSiteText(url); // throws a friendly message if unreadable
+  let combined = base;
+  try {
+    const origin = new URL(url).origin;
+    for (const path of RICH_PATHS) {
+      if (combined.length >= maxChars) break;
+      try {
+        const extra = await fetchSiteText(origin + path);
+        // Skip a sub-page that just repeats the homepage.
+        if (extra && !combined.includes(extra.slice(0, 200))) {
+          combined += `\n\n[${path}]\n${extra}`;
+        }
+      } catch {
+        // Sub-page missing / unreadable - fine, keep going.
+      }
+    }
+  } catch {
+    // Couldn't derive an origin - just use the base page.
+  }
+  return combined.slice(0, maxChars);
+}
+
 /** Fetch a URL and return its visible text, bounded in time and size. */
 export async function fetchSiteText(url: string): Promise<string> {
   const controller = new AbortController();
@@ -72,7 +104,7 @@ export async function draftAnswersFromUrl(
   url: string,
   apiKey: string,
 ): Promise<Record<string, string>> {
-  const siteText = await fetchSiteText(url);
+  const siteText = await fetchSiteTextRich(url);
 
   const questionList = ONBOARDING_QUESTIONS.map(
     (q) => `- ${q.key}: ${q.label}`,

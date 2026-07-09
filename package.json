@@ -17,6 +17,7 @@
     "discover": "node scripts/require-node.cjs && tsx engine/run-discovery.ts",
     "discover:manual": "node scripts/require-node.cjs && tsx engine/run-discovery.ts --manual",
     "jobs": "node scripts/require-node.cjs && tsx engine/run-jobs.ts",
+    "gate:backtest": "node scripts/require-node.cjs && tsx scripts/gate-backtest.ts",
     "seed:demo": "node scripts/require-node.cjs && tsx scripts/seed-demo.ts",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset"

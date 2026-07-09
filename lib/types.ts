@@ -44,6 +44,8 @@ export interface GrantRow {
   application_url: string | null;
   alignment_score: number | null;
   alignment_rationale: string | null;
+  application_spec: string | null;
+  outcome: GrantOutcome | null;
   human_notes: string | null;
   last_deadline_ping: string | null;
   last_verified: string | null;
@@ -148,6 +150,8 @@ export interface SettingsRow {
   id: number;
   discovery_rounds: number;
   discovery_target_survivors: number;
+  discovery_min_fit: number;
+  discovery_min_alignment: number;
   daily_budget_usd: number;
   preference_summary: string | null;
   weekly_cron: string;
@@ -218,6 +222,14 @@ export const GRANT_STATUSES = [
   "awarded", // won
   "dead", // not pursuing / lost / expired
 ] as const satisfies readonly GrantStatus[];
+
+export type GrantOutcome = "awarded" | "rejected" | "withdrawn";
+
+export const GRANT_OUTCOMES = [
+  "awarded",
+  "rejected",
+  "withdrawn",
+] as const satisfies readonly GrantOutcome[];
 
 export const REJECTION_REASONS = [
   "stale",

@@ -85,17 +85,21 @@ export interface Settings {
   discovery_target_survivors: number;
   daily_budget_usd: number;
   speed_mode: "thorough" | "fast";
+  discovery_min_fit: number;
+  discovery_min_alignment: number;
 }
 
 export async function loadSettings(sb: SupabaseClient): Promise<Settings> {
   // select("*") so instances that haven't applied a newer migration (e.g.
-  // 0008 speed_mode) still load fine and get the default.
+  // 0008 speed_mode, 0010 quality floors) still load fine and get the default.
   const { data } = await sb.from("settings").select("*").eq("id", 1).single();
   return {
     discovery_rounds: data?.discovery_rounds ?? 2,
     discovery_target_survivors: data?.discovery_target_survivors ?? 5,
     daily_budget_usd: Number(data?.daily_budget_usd ?? 5),
     speed_mode: data?.speed_mode === "fast" ? "fast" : "thorough",
+    discovery_min_fit: Number(data?.discovery_min_fit ?? 3),
+    discovery_min_alignment: Number(data?.discovery_min_alignment ?? 3),
   };
 }
 
@@ -218,6 +222,39 @@ export function parseAmount(amount?: string | null): number | null {
   if (unit === "k") n *= 1e3;
   else if (unit === "m") n *= 1e6;
   return Math.round(n);
+}
+
+/**
+ * "Funder - Program" labels for candidates that were already tried and killed
+ * (Skeptic refuted, or Judge cut) in past runs. Feeding these to the Finder as
+ * exclusions stops the same junk from being re-proposed every run - the grants
+ * index only covers survivors that reached the board, not the ones that died in
+ * the debate. Reads the most recent debate rows and caps the list.
+ */
+export async function loadRejectedLabels(
+  sb: SupabaseClient,
+  limit = 40,
+): Promise<string[]> {
+  const { data, error } = await sb
+    .from("agent_debate")
+    .select("finder_claim, skeptic_verdict, judge_ruling")
+    .order("created_at", { ascending: false })
+    .limit(400);
+  if (error) return []; // best-effort: never block a run on this
+  const labels = new Set<string>();
+  for (const row of data ?? []) {
+    const fc = (row.finder_claim ?? {}) as { funder?: string; program_name?: string };
+    const sv = (row.skeptic_verdict ?? {}) as { verdict?: string };
+    const jr = (row.judge_ruling ?? {}) as { survives?: boolean; funder?: string; program_name?: string };
+    const rejected = sv.verdict === "refuted" || jr.survives === false;
+    if (!rejected) continue;
+    const funder = fc.funder ?? jr.funder;
+    const program = fc.program_name ?? jr.program_name;
+    if (!funder) continue;
+    labels.add(`${funder}${program ? ` - ${program}` : ""}`.trim());
+    if (labels.size >= limit) break;
+  }
+  return [...labels];
 }
 
 export async function loadGrantsIndex(sb: SupabaseClient): Promise<GrantIndexRow[]> {

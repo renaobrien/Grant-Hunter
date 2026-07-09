@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Chip, type ChipTone } from "@/components/ui";
 import type { DraftRow, DraftRoundRow, DraftStatus } from "@/lib/types";
-import { requestDraft } from "./actions";
+import { startDraft, saveDraftContent } from "./actions";
 
 /** A draft joined with its Drafter/Critic transcript rows. */
 export type DraftWithRounds = DraftRow & { roundRows: DraftRoundRow[] };
@@ -55,13 +55,113 @@ function CriticVerdictView({ v }: { v: Record<string, unknown> | null }) {
   );
 }
 
+/** Editable draft body: edit + save, copy to clipboard, download as Markdown. */
+function EditableDraft({ draftId, initialContent }: { draftId: string; initialContent: string }) {
+  const [content, setContent] = useState(initialContent);
+  const [dirty, setDirty] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    if (pending) return;
+    setNote(null);
+    startTransition(async () => {
+      const res = await saveDraftContent(draftId, content);
+      setNote(res.ok ? "Saved ✓" : (res.error ?? "Could not save."));
+      if (res.ok) setDirty(false);
+    });
+  }
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(content);
+      setNote("Copied to clipboard ✓");
+    } catch {
+      setNote("Couldn't copy - select the text and copy manually.");
+    }
+  }
+
+  function download() {
+    const blob = new Blob([content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `application-draft-${draftId.slice(0, 8)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="stack" style={{ gap: "var(--s2)" }}>
+      <textarea
+        className="draft-edit"
+        value={content}
+        rows={16}
+        onChange={(e) => {
+          setContent(e.target.value);
+          setDirty(true);
+          setNote(null);
+        }}
+      />
+      <div className="row">
+        <button type="button" className="btn btn-sm btn-primary" onClick={save} disabled={pending || !dirty}>
+          {pending ? "Saving…" : "Save edits"}
+        </button>
+        <button type="button" className="btn btn-sm" onClick={copy}>
+          Copy
+        </button>
+        <button type="button" className="btn btn-sm" onClick={download}>
+          Download .md
+        </button>
+        {note ? <span className="saved-note">{note}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+/** The Critic's verdict on the final round, or null when never critiqued. */
+function lastVerdict(draft: DraftWithRounds): Record<string, unknown> | null {
+  if (!draft.roundRows.length) return null;
+  const last = draft.roundRows.reduce((a, b) => (b.round > a.round ? b : a));
+  return last.critic_verdict;
+}
+
 function DraftItem({ draft }: { draft: DraftWithRounds }) {
+  // A 'ready' draft is only trustworthy if the Critic actually signed off on the
+  // last round. The loop can also stop at the round cap unapproved, or run out
+  // of budget before any critique - don't paint those green.
+  const verdict = lastVerdict(draft);
+  const criticApproved = verdict?.approved === true;
+  const needsReview = draft.status === "ready" && !criticApproved;
+  const openIssues =
+    needsReview && Array.isArray(verdict?.issues)
+      ? (verdict!.issues as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+
   return (
     <div className="draft-item">
       <div className="card-head">
-        <Chip label={statusLabel(draft.status)} tone={statusTone(draft.status)} />
+        {needsReview ? (
+          <Chip label="Needs review" tone="warn" />
+        ) : (
+          <Chip label={statusLabel(draft.status)} tone={statusTone(draft.status)} />
+        )}
         <span className="muted">{draft.created_at.slice(0, 10)}</span>
       </div>
+
+      {needsReview ? (
+        <p className="saved-note" style={{ color: "var(--tone-warn)" }}>
+          The Critic did not sign off on this draft. Read it before you use it.
+          {openIssues.length ? " Open issues:" : ""}
+        </p>
+      ) : null}
+      {openIssues.length ? (
+        <ul className="mini-list">
+          {openIssues.map((s, i) => (
+            <li key={i}>{s}</li>
+          ))}
+        </ul>
+      ) : null}
 
       {draft.status === "error" && draft.error ? (
         <p className="saved-note" style={{ color: "var(--tone-bad)" }}>
@@ -70,12 +170,12 @@ function DraftItem({ draft }: { draft: DraftWithRounds }) {
       ) : null}
 
       {draft.status === "ready" && draft.content ? (
-        <div className="prose draft-body">{draft.content}</div>
+        <EditableDraft draftId={draft.id} initialContent={draft.content} />
       ) : draft.status !== "error" ? (
         <p className="muted">
           {draft.status === "ready"
             ? "Draft completed but no content was returned."
-            : "Generating - a draft is produced within ~30 min by the jobs worker."}
+            : "Drafting - this page updates as the Drafter and Critic finish each round."}
         </p>
       ) : null}
 
@@ -122,9 +222,9 @@ export default function DraftPanel({
   function onDraft() {
     setError(null);
     startTransition(async () => {
-      const res = await requestDraft(grantId);
+      const res = await startDraft(grantId);
       if (res.ok) setRequested(true);
-      else setError(res.error ?? "Could not queue a draft.");
+      else setError(res.error ?? "Could not start a draft.");
     });
   }
 
@@ -137,11 +237,12 @@ export default function DraftPanel({
           onClick={onDraft}
           disabled={queued || pending}
         >
-          {pending ? "Queuing…" : "Draft application"}
+          {pending ? "Starting…" : "Draft application"}
         </button>
         {queued ? (
           <span className="muted">
-            Queued - a draft is generated within ~30 min by the jobs worker.
+            Drafting started - refresh in a minute to see it (or ~30 min on a
+            hosted instance that drains the queue on a schedule).
           </span>
         ) : null}
         {error ? (

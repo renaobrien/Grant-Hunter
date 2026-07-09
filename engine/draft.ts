@@ -15,6 +15,7 @@ import {
   loadSettings,
   startRun,
 } from "./db";
+import { getPreferenceContext } from "./preference-context";
 import { sendNotification } from "./notify";
 import type { AgentUsage } from "./types";
 
@@ -42,13 +43,15 @@ async function tracked<T extends { usage: AgentUsage }>(
     await finishRun(sb, run, { status: "success", usage: r.usage });
     return r;
   } catch (e) {
-    await finishRun(sb, run, { status: "error", error: (e as Error).message });
+    // Bill any usage spent before the failure so it still hits the daily cap.
+    const usage = (e as { usage?: AgentUsage }).usage;
+    await finishRun(sb, run, { status: "error", usage, error: (e as Error).message });
     throw e;
   }
 }
 
 const GRANT_FIELDS =
-  "funder, program_name, amount, deadline, framing_angle, eligibility_notes, notes, recommendation, alignment_rationale, source_url, application_url";
+  "funder, program_name, amount, deadline, framing_angle, eligibility_notes, notes, recommendation, alignment_rationale, source_url, application_url, application_spec";
 
 /** Find the most recent queued/running drafts row for this grant and mark it running;
  * insert one if none exists. Returns the drafts row id we'll write into. */
@@ -112,7 +115,13 @@ export async function runDraft(
     // Resolve the target drafts row first so we always have an id to report/finalize.
     draftId = await resolveDraftRow(sb, opts.grantId);
 
-    const [profile, grant] = await Promise.all([loadProfile(sb), loadGrant(sb, opts.grantId)]);
+    const [profile, grant, preferenceContext] = await Promise.all([
+      loadProfile(sb),
+      loadGrant(sb, opts.grantId),
+      // Same teaching loop the Finder + Judge already read: applied-to grants,
+      // top-rated framings, and reviewer rationale shape the writing too.
+      getPreferenceContext(sb),
+    ]);
     if (!grant) {
       const msg = `grant ${opts.grantId} not found`;
       await markError(sb, draftId, msg);
@@ -129,12 +138,16 @@ export async function runDraft(
       if ((await budgetRemainingCents(sb, daily_budget_usd)) <= 0) break;
 
       const { draft } = await tracked(sb, "drafter", trigger, { grantId: opts.grantId, round }, () =>
-        runDrafter({ apiKey: opts.apiKey, profile, grant, priorCritique }),
+        runDrafter({ apiKey: opts.apiKey, profile, grant, priorCritique, preferenceContext }),
       );
       latestDraft = draft;
 
+      // The Drafter (Opus) just spent; re-check before the Critic (also Opus)
+      // so the cap holds between the two calls in a round.
+      if ((await budgetRemainingCents(sb, daily_budget_usd)) <= 0) break;
+
       const { verdict } = await tracked(sb, "critic", trigger, { grantId: opts.grantId, round }, () =>
-        runCritic({ apiKey: opts.apiKey, profile, grant, draft }),
+        runCritic({ apiKey: opts.apiKey, profile, grant, draft, preferenceContext }),
       );
 
       rounds = round;

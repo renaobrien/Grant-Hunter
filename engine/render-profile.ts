@@ -102,11 +102,12 @@ Return ONLY a JSON array of candidates matching the Candidate schema.
 
 export const SKEPTIC_ROLE = `
 YOUR ROLE: SKEPTIC - a red-team adversary. Your job is to TRY TO REFUTE each candidate, not to confirm it.
-Attack every candidate on three axes:
+Attack every candidate on four axes:
 1. ELIGIBILITY - does this org actually qualify? Does the funder require a university PI, nonprofit status, a specific geography, or traction the org lacks? Check the profile's constraints against the funder's stated requirements.
 2. FIT - is the alignment overstated relative to what the funder actually funds?
 3. FRESHNESS - is the deadline stale, the program closed, or the amount misremembered? Fetch the funder's canonical page to verify.
-Default to skepticism: if you cannot confirm both eligibility AND an open, real deadline from the funder's own page, do not let it pass unchallenged.
+4. SOURCE - does the cited URL point to the funder's OWN program page? Treat an aggregator/listing link, or a link that just redirects to a generic homepage, as unverified: a live-but-wrong link is still a bad lead. Prefer (and cite) the funder's canonical program page.
+Default to skepticism: if you cannot confirm eligibility AND an open, real deadline from the funder's own page, do not let it pass unchallenged.
 Return ONLY a JSON array of verdicts (one per candidate, SAME ORDER as given) matching the SkepticVerdict schema: verdict (refuted | needs-verification | survives), a one-line kill_shot, and eligibility_ok / deadline_ok booleans.
 `.trim();
 
@@ -127,10 +128,11 @@ Return ONLY a JSON array of JudgeRuling records (include non-survivors with surv
 
 export const DRAFTER_ROLE = `
 YOUR ROLE: DRAFTER.
-Write a compelling grant-application narrative for the organization described above, aimed at THIS specific funder. Translate the org's real work into the funder's vocabulary and priorities, and anchor the entire narrative on the grant's framing angle.
-Use the profile above as your ONLY source of ground truth. Do NOT invent facts, achievements, metrics, partnerships, dates, or numbers that the profile does not support - a fabricated claim is far worse than a missing one. If a stronger application would need a fact you do not have, write around it or state the capability honestly rather than inflating it.
+Write a compelling grant application for the organization described above, aimed at THIS specific funder. Translate the org's real work into the funder's vocabulary and priorities, and anchor everything on the grant's framing angle.
+If the grant details include an APPLICATION REQUIREMENTS block, treat it as the spec: answer each question or prompt directly, as its own labeled section, and respect every stated word or character limit. Do not add sections the funder did not ask for. If there is no requirements block, write a cohesive narrative instead.
+Use the profile above as your ONLY source of ground truth. Do NOT invent facts, achievements, metrics, partnerships, dates, or numbers that the profile does not support - a fabricated claim is far worse than a missing one. If a stronger answer would need a fact you do not have, write around it or state the capability honestly rather than inflating it.
 Speak in the funder's frame: lead with the outcomes and priorities THEY fund, not the org's internal pitch deck. Be concrete and specific; cut generic mission-statement filler.
-Return the application narrative as prose only - no JSON, no preamble, no meta-commentary about the draft itself.
+Return the application text as prose only - no preamble, no meta-commentary about the draft itself.
 `.trim();
 
 export const CRITIC_ROLE = `
@@ -138,7 +140,7 @@ YOUR ROLE: CRITIC - a red-team reviewer of a grant-application draft. Your job i
 Hunt for these failure modes:
 1. UNSUPPORTED CLAIMS - any fact, metric, achievement, partnership, or number in the draft that the org profile does not support. Flag every invented or inflated claim.
 2. FUNDER FIT - does the narrative actually speak to what THIS funder funds, in their vocabulary and priorities, anchored on the framing angle? Flag misaligned or off-target framing.
-3. MISSING REQUIREMENTS - does the draft satisfy the grant's stated requirements (eligibility, priorities, page/length limits, required themes)? Flag anything the draft omits or contradicts.
+3. MISSING REQUIREMENTS - if an APPLICATION REQUIREMENTS block is provided, check the draft answers EVERY question in it and respects each stated word/character limit; flag any question left unanswered, any limit exceeded, or any required section missing. With no requirements block, judge against the grant's stated eligibility, priorities, and themes.
 4. GENERIC LANGUAGE - flag pitch-deck filler, mission-statement platitudes, and vague claims that could describe any organization.
 Approve ONLY when the draft is free of unsupported claims, fits the funder, meets the stated requirements, and reads as specific rather than generic.
 Return ONLY JSON, no prose outside it: {"approved": boolean, "issues": string[], "suggestions": string[]}.

@@ -10,6 +10,13 @@ import { createClient } from "@supabase/supabase-js";
 
 let started = false;
 let lastFiredKey = "";
+let lastJobsKey = "";
+
+// How often the local scheduler drains the jobs queue + sweeps deadlines/links.
+// Matches the GitHub Action cadence (*/30). Without this, auto-expire and link
+// re-validation never fire on a self-hosted box unless the operator runs
+// `npm run jobs` by hand.
+const JOBS_INTERVAL_MIN = 30;
 
 interface CronParts {
   minute: number;
@@ -41,6 +48,27 @@ function matchesNow(cron: CronParts, now: Date): boolean {
   );
 }
 
+/** Spawn a detached engine entrypoint (same mechanism the Run button uses). */
+function spawnEngine(script: string): void {
+  const child = spawn("npx", ["tsx", script], {
+    cwd: process.cwd(),
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+}
+
+/** Run the jobs worker every JOBS_INTERVAL_MIN minutes (drafts + deadline
+ *  expiry + link re-validation). Fires at most once per matching minute. */
+function maybeRunJobs(now: Date): void {
+  if (now.getUTCMinutes() % JOBS_INTERVAL_MIN !== 0) return;
+  const fireKey = now.toISOString().slice(0, 16);
+  if (lastJobsKey === fireKey) return;
+  lastJobsKey = fireKey;
+  console.log("[scheduler] running jobs worker (queue drain + deadline/link sweep)");
+  spawnEngine("engine/run-jobs.ts");
+}
+
 async function tick(): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -54,10 +82,13 @@ async function tick(): Promise<void> {
     .maybeSingle();
   if (settings?.run_mode !== "local") return;
 
+  const now = new Date();
+
+  // Jobs sweep runs on its own cadence, independent of the weekly discovery cron.
+  maybeRunJobs(now);
+
   const cron = parseWeeklyCron(settings.weekly_cron ?? "");
   if (!cron) return;
-
-  const now = new Date();
   if (!matchesNow(cron, now)) return;
 
   // Fire at most once per matching minute, even if ticks jitter.
@@ -78,12 +109,7 @@ async function tick(): Promise<void> {
   }
 
   console.log(`[scheduler] weekly_cron matched (${settings.weekly_cron}) - starting discovery`);
-  const child = spawn("npx", ["tsx", "engine/run-discovery.ts"], {
-    cwd: process.cwd(),
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
+  spawnEngine("engine/run-discovery.ts");
 }
 
 /** Idempotent: safe to call on every server boot. */

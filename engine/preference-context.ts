@@ -16,6 +16,7 @@ interface ScoredGrant {
   framing_angle: string | null;
   blockers: string | null;
   status: string | null;
+  outcome: string | null;
 }
 
 type RatingGrant = { funder: string | null; program_name: string | null };
@@ -34,7 +35,7 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
     sb
       .from("grants")
       .select(
-        "funder, program_name, human_score, rejection_reason, fit_score, framing_angle, blockers, status",
+        "funder, program_name, human_score, rejection_reason, fit_score, framing_angle, blockers, status, outcome",
       ),
     sb
       .from("grant_ratings")
@@ -60,6 +61,16 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
     .filter((g) => ["submitted", "awarded"].includes(g.status ?? ""))
     .slice(0, 5)
     .map((g) => `${label(g)} (${g.framing_angle ?? "no angle"}; fit ${g.fit_score ?? "?"}/5)`);
+
+  // Real outcomes - the strongest signal we have (ground truth, not a pre-rating).
+  const won = list
+    .filter((g) => g.outcome === "awarded")
+    .slice(0, 6)
+    .map((g) => `${label(g)} (${g.framing_angle ?? "no angle"})`);
+  const lostApplied = list
+    .filter((g) => g.outcome === "rejected")
+    .slice(0, 6)
+    .map((g) => `${label(g)} (${g.framing_angle ?? "no angle"})`);
 
   const scored = list.filter(
     (g) => g.human_score !== null && !Number.isNaN(Number(g.human_score)),
@@ -97,6 +108,14 @@ export async function getPreferenceContext(sb: SupabaseClient): Promise<string> 
     .slice(0, 6)
     .map((g) => `${label(g)} (moved to ${g.status})`);
 
+  if (won.length)
+    sections.push(
+      `WON these (strongest positive signal - prioritize funders and framings like these): ${won.join(" | ")}`,
+    );
+  if (lostApplied.length)
+    sections.push(
+      `Applied but did NOT win - still plausibly fundable; strengthen the framing or find better-fit funders rather than dropping the type: ${lostApplied.join(" | ")}`,
+    );
   if (applied.length)
     sections.push(`Grants we actually applied to - find more like these: ${applied.join(" | ")}`);
   if (liked.length) sections.push(`Strong fits we want more of: ${liked.join(" | ")}`);

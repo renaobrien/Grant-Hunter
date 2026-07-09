@@ -603,6 +603,24 @@ textarea {
   min-height: 96px;
   resize: vertical;
 }
+.draft-edit {
+  min-height: 320px;
+  line-height: 1.6;
+}
+.attention-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.attention-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
 .field {
   display: flex;
   flex-direction: column;

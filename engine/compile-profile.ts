@@ -2,7 +2,7 @@
 // the CLI (`npm run onboard`) and the web onboarding server action so both
 // produce an identical, agent-ready profile.
 import { callClaude, MODELS, parseJsonFromResponse } from "./anthropic";
-import { fetchSiteText } from "./prefill-from-url";
+import { fetchSiteTextRich } from "./prefill-from-url";
 import { ONBOARDING_QUESTIONS } from "./onboarding-questions";
 import type { Profile } from "./types";
 
@@ -48,7 +48,7 @@ export async function compileProfile(
   let siteContext = "";
   if (url) {
     try {
-      siteContext = `Org website text - use to fill gaps, never override their answers:\n${await fetchSiteText(url)}`;
+      siteContext = `Org website text - use to fill gaps, never override their answers:\n${await fetchSiteTextRich(url)}`;
     } catch {
       // site unreadable; proceed with answers only
     }

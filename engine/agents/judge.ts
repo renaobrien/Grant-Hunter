@@ -40,16 +40,22 @@ export async function runJudge(opts: {
     // no web search - the Judge reasons over what Finder/Skeptic already gathered
   });
 
-  const parsed = parseJsonFromResponse(res.text, res.stopReason);
-  const rulings = Array.isArray(parsed) ? (parsed as JudgeRuling[]) : [];
-  return {
-    rulings,
-    usage: {
-      model: MODELS.opus,
-      inputTokens: res.inputTokens,
-      outputTokens: res.outputTokens,
-      stopReason: res.stopReason,
-      webSearchRequests: res.webSearchRequests,
-    },
+  const usage: AgentUsage = {
+    model: MODELS.opus,
+    inputTokens: res.inputTokens,
+    outputTokens: res.outputTokens,
+    stopReason: res.stopReason,
+    webSearchRequests: res.webSearchRequests,
   };
+
+  // Carry usage on a parse failure so the spent tokens still hit the daily cap.
+  let parsed: unknown;
+  try {
+    parsed = parseJsonFromResponse(res.text, res.stopReason);
+  } catch (e) {
+    throw Object.assign(e as Error, { usage });
+  }
+
+  const rulings = Array.isArray(parsed) ? (parsed as JudgeRuling[]) : [];
+  return { rulings, usage };
 }

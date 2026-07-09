@@ -24,8 +24,12 @@ export async function runCritic(opts: {
   profile: Profile;
   grant: GrantForDraft;
   draft: string;
+  /** The teaching loop (getPreferenceContext) - what the org rated well/poorly. */
+  preferenceContext?: string;
 }): Promise<{ verdict: CriticVerdict; usage: AgentUsage }> {
-  const system = [renderVoice(opts.profile), CRITIC_ROLE].join("\n\n");
+  const system = [renderVoice(opts.profile), CRITIC_ROLE, opts.preferenceContext]
+    .filter(Boolean)
+    .join("\n\n");
   const user = [
     "Red-team this grant-application draft against the opportunity below. Assume it overclaims until the profile proves otherwise.",
     `GRANT DETAILS:\n${renderGrantDetails(opts.grant)}`,

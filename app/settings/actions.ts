@@ -4,6 +4,16 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import {
+  budgetRemainingCents,
+  finishRun,
+  loadSettings,
+  resolveAnthropicKey,
+  startRun,
+} from "@/engine/db";
+import { distillPreferences } from "@/engine/distill-preferences";
+import { friendlyClaudeError } from "@/engine/anthropic";
+import type { AgentUsage } from "@/engine/types";
 import type { NotificationChannel } from "@/lib/types";
 
 const run = promisify(execFile);
@@ -17,6 +27,8 @@ export interface SettingsValues {
   daily_budget_usd: number;
   discovery_rounds: number;
   discovery_target_survivors: number;
+  discovery_min_fit: number;
+  discovery_min_alignment: number;
   preference_summary: string | null;
   speed_mode: "thorough" | "fast";
 }
@@ -27,6 +39,8 @@ export async function saveSettings(vals: SettingsValues): Promise<ActionResult> 
   const budget = Number(vals.daily_budget_usd);
   const rounds = Number(vals.discovery_rounds);
   const survivors = Number(vals.discovery_target_survivors);
+  const minFit = Number(vals.discovery_min_fit);
+  const minAlignment = Number(vals.discovery_min_alignment);
 
   if (!Number.isFinite(budget) || budget < 0) {
     return { ok: false, error: "Daily budget must be a non-negative number." };
@@ -36,6 +50,12 @@ export async function saveSettings(vals: SettingsValues): Promise<ActionResult> 
   }
   if (!Number.isInteger(survivors) || survivors < 1) {
     return { ok: false, error: "Target survivors must be a whole number ≥ 1." };
+  }
+  if (!Number.isInteger(minFit) || minFit < 1 || minFit > 5) {
+    return { ok: false, error: "Minimum fit must be a whole number 1-5." };
+  }
+  if (!Number.isInteger(minAlignment) || minAlignment < 1 || minAlignment > 5) {
+    return { ok: false, error: "Minimum alignment must be a whole number 1-5." };
   }
   if (vals.speed_mode !== "thorough" && vals.speed_mode !== "fast") {
     return { ok: false, error: "Speed must be 'thorough' or 'fast'." };
@@ -48,6 +68,8 @@ export async function saveSettings(vals: SettingsValues): Promise<ActionResult> 
       daily_budget_usd: budget,
       discovery_rounds: rounds,
       discovery_target_survivors: survivors,
+      discovery_min_fit: minFit,
+      discovery_min_alignment: minAlignment,
       preference_summary: vals.preference_summary,
       speed_mode: vals.speed_mode,
     },
@@ -57,6 +79,47 @@ export async function saveSettings(vals: SettingsValues): Promise<ActionResult> 
   if (error) return { ok: false, error: error.message };
   revalidatePath("/settings");
   return { ok: true };
+}
+
+/**
+ * Regenerate settings.preference_summary by distilling the org's ratings + board
+ * activity (one budget-capped Haiku call). Returns the new summary so the form
+ * can show it. Persists it too, so it's not lost if the user navigates away.
+ */
+export async function regeneratePreferenceSummary(): Promise<
+  { ok: true; summary: string } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+
+  let apiKey: string;
+  try {
+    apiKey = await resolveAnthropicKey(supabase);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+
+  const { daily_budget_usd } = await loadSettings(supabase);
+  if ((await budgetRemainingCents(supabase, daily_budget_usd)) <= 0) {
+    return {
+      ok: false,
+      error: "Daily budget is spent. Try again tomorrow, or raise it above.",
+    };
+  }
+
+  const run = await startRun(supabase, "distiller", "manual", {});
+  try {
+    const { summary, usage } = await distillPreferences(supabase, apiKey);
+    await finishRun(supabase, run, { status: "success", usage });
+    await supabase
+      .from("settings")
+      .upsert({ id: 1, preference_summary: summary || null }, { onConflict: "id" });
+    revalidatePath("/settings");
+    return { ok: true, summary };
+  } catch (e) {
+    const usage = (e as { usage?: AgentUsage }).usage;
+    await finishRun(supabase, run, { status: "error", usage, error: (e as Error).message });
+    return { ok: false, error: friendlyClaudeError(e) };
+  }
 }
 
 // Save (or clear) the Anthropic API key on the settings singleton. Write-only:

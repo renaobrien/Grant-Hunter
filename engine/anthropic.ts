@@ -83,10 +83,14 @@ function getClient(apiKey: string): Anthropic {
   if (!cachedClient || cachedKey !== apiKey) {
     // timeout: web-search-heavy Finder calls legitimately run past the SDK's
     // ~10-minute default and were dying with "Request timed out." mid-run.
-    // 25 min covers a slow multi-search turn; retries stay for 429/5xx.
+    // 25 min covers a slow multi-search turn.
+    // maxRetries: the SDK retries 429 / 5xx / overloaded with exponential backoff
+    // + jitter. Bumped to 4 as more agents (distiller, requirements extractor)
+    // are added; engine calls run sequentially, so no concurrency limiter is
+    // needed on top of this.
     cachedClient = new Anthropic({
       apiKey,
-      maxRetries: 3,
+      maxRetries: 4,
       timeout: 25 * 60 * 1000,
     });
     cachedKey = apiKey;
@@ -148,8 +152,13 @@ export async function callClaude(options: ClaudeOptions): Promise<ClaudeResponse
 
   const text = stripFancyDashes(textParts.join("\n"));
   if (!text.trim()) {
-    throw new Error(
-      `No text in API response (stop_reason: ${stopReason}). Model may have exhausted tool calls without a summary.`,
+    // Tokens were already spent to get here, so carry the usage on the error:
+    // tracked() bills it to the daily cap instead of recording null cost.
+    throw Object.assign(
+      new Error(
+        `No text in API response (stop_reason: ${stopReason}). Model may have exhausted tool calls without a summary.`,
+      ),
+      { usage: { model, inputTokens, outputTokens, stopReason, webSearchRequests } },
     );
   }
 

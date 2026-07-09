@@ -11,6 +11,7 @@ import {
   EmptyState,
   type ChipTone,
 } from "@/components/ui";
+import { deadlinePassed, checkedAgo } from "@/lib/freshness";
 import type {
   GrantRow,
   DebateRow,
@@ -20,6 +21,8 @@ import type {
 } from "@/lib/types";
 import RatingForm from "./RatingForm";
 import HumanNotes from "./HumanNotes";
+import ApplicationSpec from "./ApplicationSpec";
+import OutcomeForm from "./OutcomeForm";
 import DraftPanel, { type DraftWithRounds } from "./DraftPanel";
 
 export const dynamic = "force-dynamic";
@@ -275,7 +278,14 @@ export default async function GrantDetailPage({
             <StatusChip status={grant.status} />
             {grant.amount ? <span className="gc-amount">{grant.amount}</span> : null}
             {grant.deadline ? (
-              <Chip label={`Deadline: ${grant.deadline}`} tone="neutral" />
+              deadlinePassed(grant.deadline) ? (
+                <Chip label={`Deadline passed: ${grant.deadline}`} tone="bad" />
+              ) : (
+                <Chip label={`Deadline: ${grant.deadline}`} tone="neutral" />
+              )
+            ) : null}
+            {checkedAgo(grant.last_verified) ? (
+              <span className="muted">{checkedAgo(grant.last_verified)}</span>
             ) : null}
           </div>
         </div>
@@ -427,10 +437,26 @@ export default async function GrantDetailPage({
           ) : null}
         </Card>
 
+        {/* Outcome - ground truth for the teaching loop */}
+        <Card>
+          <h2 className="section-head">Outcome</h2>
+          <OutcomeForm grantId={grant.id} initialOutcome={grant.outcome} />
+        </Card>
+
         {/* Operator notes */}
         <Card>
           <h2 className="section-head">Notes</h2>
           <HumanNotes grantId={grant.id} initialNotes={grant.human_notes} />
+        </Card>
+
+        {/* Application requirements - drives the Drafter/Critic */}
+        <Card>
+          <h2 className="section-head">Application requirements</h2>
+          <ApplicationSpec
+            grantId={grant.id}
+            initialSpec={grant.application_spec}
+            hasUrl={Boolean(grant.application_url || grant.source_url)}
+          />
         </Card>
 
         {/* Drafts */}

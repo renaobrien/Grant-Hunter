@@ -13,54 +13,26 @@ import {
   finishRun,
   loadGrantsIndex,
   loadProfile,
+  loadRejectedLabels,
   loadSettings,
   startRun,
   upsertRuling,
   writeDebate,
 } from "./db";
 import { getPreferenceContext } from "./preference-context";
+import { passesQualityGate } from "./quality-gate";
+import { isHttp, urlAlive } from "./url-check";
 import type { AgentUsage, Candidate, JudgeRuling, SkepticVerdict } from "./types";
 
-const isHttp = (u?: string | null) => !!u && /^https?:\/\//i.test(u);
 const eq = (a?: string | null, b?: string | null) =>
   (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
 
 // ---------------------------------------------------------------------------
-// URL liveness. Models sometimes cite pages that 404 (moved, hallucinated, or
-// stale search results). Before a survivor reaches the board, actually fetch
-// its URLs: a dead application_url/source_url is dropped, and a survivor with
-// NO live URL at all is cut entirely - a grant you can't open is noise.
+// URL liveness. Before a survivor reaches the board, actually fetch its URLs
+// (via ./url-check): a dead application_url/source_url is dropped, and a
+// survivor with NO live URL at all is cut entirely - a grant you can't open is
+// noise. The jobs sweep re-runs the same check periodically.
 // ---------------------------------------------------------------------------
-const URL_CHECK_TIMEOUT_MS = 8_000;
-
-/** true = URL responds (2xx/3xx; 401/403 count - many portals gate content). */
-async function urlAlive(url: string): Promise<boolean> {
-  const attempt = async (method: "HEAD" | "GET") => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), URL_CHECK_TIMEOUT_MS);
-    try {
-      const res = await fetch(url, {
-        method,
-        redirect: "follow",
-        signal: controller.signal,
-        headers: { "user-agent": "Mozilla/5.0 (compatible; GrantHunter/1.0; link check)" },
-      });
-      if (res.ok) return true;
-      // Auth-gated portals still prove the page exists.
-      if (res.status === 401 || res.status === 403) return true;
-      // Some servers reject HEAD outright - retry those as GET.
-      if (method === "HEAD" && (res.status === 405 || res.status === 501)) return null;
-      return false;
-    } catch {
-      return method === "HEAD" ? null : false; // network/timeout: retry HEAD as GET once
-    } finally {
-      clearTimeout(timer);
-    }
-  };
-  const head = await attempt("HEAD");
-  if (head !== null) return head;
-  return (await attempt("GET")) === true;
-}
 
 /** Null out dead URLs on a ruling; return false when nothing usable is left. */
 async function verifyRulingUrls(r: JudgeRuling): Promise<boolean> {
@@ -110,7 +82,10 @@ async function tracked<T extends { usage: AgentUsage }>(
     await finishRun(sb, run, { status: "success", usage: r.usage });
     return r;
   } catch (e) {
-    await finishRun(sb, run, { status: "error", error: (e as Error).message });
+    // Bill any usage the agent spent before it failed (e.g. tokens spent, then
+    // JSON parse threw) so a failing call can't slip under the daily cap.
+    const usage = (e as { usage?: AgentUsage }).usage;
+    await finishRun(sb, run, { status: "error", usage, error: (e as Error).message });
     throw e;
   }
 }
@@ -123,6 +98,9 @@ export async function runDiscovery(
   const [profile, settings] = await Promise.all([loadProfile(sb), loadSettings(sb)]);
   const preferenceContext = await getPreferenceContext(sb);
   const index = await loadGrantsIndex(sb);
+  // Candidates already tried and killed in past runs - don't let the Finder
+  // re-propose them (they never became grants, so the index alone won't exclude them).
+  const rejectedLabels = await loadRejectedLabels(sb);
 
   const runId = randomUUID();
   const today = new Date().toISOString().slice(0, 10);
@@ -154,10 +132,11 @@ export async function runDiscovery(
     // Tell the Finder what's already in the pipeline (index grows as rounds
     // create grants, so rebuild each round). Prevents re-proposing tracked
     // grants and double-counting them toward the survivor target.
-    const exclusions = index
+    const trackedLabels = index
       .map((g) => `${g.funder ?? ""}${g.program_name ? ` - ${g.program_name}` : ""}`.trim())
-      .filter(Boolean)
-      .slice(0, 60);
+      .filter(Boolean);
+    // Tracked survivors + previously-killed candidates, deduped and capped.
+    const exclusions = [...new Set([...trackedLabels, ...rejectedLabels])].slice(0, 80);
 
     // 1) Finder proposes
     const { candidates } = await tracked(sb, "finder", trigger, { round, runId }, () =>
@@ -168,10 +147,23 @@ export async function runDiscovery(
       break;
     }
 
+    // Re-check the cap between agents: a single round runs Finder + Skeptic +
+    // Judge, each of which can spend real money, so one check at round start
+    // isn't enough to keep the daily cap honest.
+    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) <= 0) {
+      summary.stopped = "hit daily budget after finder";
+      break;
+    }
+
     // 2) Skeptic refutes
     const { verdicts } = await tracked(sb, "skeptic", trigger, { round, runId, n: candidates.length }, () =>
       runSkeptic({ apiKey: opts.apiKey, profile, candidates, fast }),
     );
+
+    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) <= 0) {
+      summary.stopped = "hit daily budget after skeptic";
+      break;
+    }
     if (verdicts.length !== candidates.length) {
       console.warn(
         `[discovery] skeptic returned ${verdicts.length} verdicts for ${candidates.length} candidates - order-based matching may be off.`,
@@ -212,25 +204,34 @@ export async function runDiscovery(
 
     for (let i = 0; i < candidates.length; i++) {
       const c = candidates[i];
-      const ruling = rulingFor(c, i) ?? null;
-      // Code-level guard on the Judge's own survival rule (fit_score >= 3),
-      // in case the model marks survives=true on a record that breaks it.
-      if (ruling?.survives && ruling.fit_score >= 3) {
-        // Dead-link guard: fetch the cited URLs; drop dead ones, and cut the
-        // survivor entirely when no live URL remains.
-        if (!(await verifyRulingUrls(ruling))) {
-          summary.skipped++;
-          console.warn(
-            `[discovery] cut "${ruling.funder} - ${ruling.program_name}": no live URL (404/unreachable)`,
-          );
-          continue;
-        }
-        const res = await upsertRuling(sb, ruling, index);
-        if (res.action === "created") summary.created++;
-        else if (res.action === "updated") summary.updated++;
-        else summary.skipped++;
-        if (res.action !== "skipped") summary.survivors++;
+      const ruling = rulingFor(c, i);
+      if (!ruling) continue;
+
+      // Deterministic quality gate: the Judge's survival rule + the Skeptic's
+      // eligibility/freshness verdict + expired-deadline + amount bounds, all
+      // enforced in code. Runs BEFORE verifyRulingUrls so cheap local checks
+      // reject junk before we pay for a network fetch.
+      const gate = passesQualityGate(ruling, verdictFor(i), profile, settings, today);
+      if (!gate.pass) {
+        summary.skipped++;
+        console.warn(`[discovery] cut "${ruling.funder} - ${ruling.program_name}": ${gate.reason}`);
+        continue;
       }
+
+      // Dead-link guard: fetch the cited URLs; drop dead ones, and cut the
+      // survivor entirely when no live URL remains.
+      if (!(await verifyRulingUrls(ruling))) {
+        summary.skipped++;
+        console.warn(
+          `[discovery] cut "${ruling.funder} - ${ruling.program_name}": no live URL (404/unreachable)`,
+        );
+        continue;
+      }
+      const res = await upsertRuling(sb, ruling, index);
+      if (res.action === "created") summary.created++;
+      else if (res.action === "updated") summary.updated++;
+      else summary.skipped++;
+      if (res.action !== "skipped") summary.survivors++;
     }
 
     // early stop if we have enough

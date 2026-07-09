@@ -9,11 +9,22 @@ import { renderVoice } from "@/engine/render-profile";
 import { compileProfile } from "@/engine/compile-profile";
 import { draftAnswersFromUrl } from "@/engine/prefill-from-url";
 import { friendlyClaudeError } from "@/engine/anthropic";
-import { resolveAnthropicKey } from "@/engine/db";
+import { loadProfile, resolveAnthropicKey } from "@/engine/db";
+import type { Profile } from "@/engine/types";
 import type { RunMode } from "@/lib/types";
 
+/** The compiled fields we surface for human review before finishing onboarding. */
+export interface CompiledReview {
+  org_name: string;
+  one_liner: string;
+  min_amount: number | null;
+  anti_patterns: string[];
+  framing_angles: { name: string; description: string }[];
+  eligibility_constraints: { label: string; detail: string }[];
+}
+
 export type CompileResult =
-  | { ok: true; orgName: string | null; voice: string }
+  | { ok: true; orgName: string | null; voice: string; profile: CompiledReview }
   | { ok: false; error: string };
 
 export type PrefillResult =
@@ -69,7 +80,67 @@ export async function runOnboardingCompile(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/profile");
-  return { ok: true, orgName: profile.org_name, voice };
+  return {
+    ok: true,
+    orgName: profile.org_name,
+    voice,
+    profile: {
+      org_name: profile.org_name ?? "",
+      one_liner: profile.one_liner ?? "",
+      min_amount: profile.min_amount ?? null,
+      anti_patterns: profile.anti_patterns ?? [],
+      framing_angles: profile.framing_angles ?? [],
+      eligibility_constraints: profile.eligibility_constraints ?? [],
+    },
+  };
+}
+
+/**
+ * Save the operator's edits to the AI-compiled profile (the review step). Merges
+ * onto the stored profile and re-renders the compiled voice so the change takes
+ * effect on the next run. Garbage-in caught here weakens no downstream agent.
+ */
+export async function saveProfileReview(
+  edits: CompiledReview,
+): Promise<{ ok: boolean; error?: string; voice?: string }> {
+  const supabase = await createClient();
+
+  let current: Profile;
+  try {
+    current = await loadProfile(supabase);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+
+  const merged: Profile = {
+    ...current,
+    org_name: edits.org_name.trim() || current.org_name,
+    one_liner: edits.one_liner.trim() || current.one_liner,
+    min_amount: edits.min_amount,
+    anti_patterns: edits.anti_patterns,
+    framing_angles: edits.framing_angles,
+    eligibility_constraints: edits.eligibility_constraints,
+  };
+  const voice = renderVoice(merged);
+
+  const { error } = await supabase.from("profile").upsert(
+    {
+      id: 1,
+      org_name: merged.org_name,
+      one_liner: merged.one_liner,
+      min_amount: merged.min_amount,
+      anti_patterns: merged.anti_patterns,
+      framing_angles: merged.framing_angles,
+      eligibility_constraints: merged.eligibility_constraints,
+      compiled_voice: voice,
+      compiled_at: new Date().toISOString(),
+    },
+    { onConflict: "id" },
+  );
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/profile");
+  return { ok: true, voice };
 }
 
 /** Step 2: record how the org wants the engine to run. */

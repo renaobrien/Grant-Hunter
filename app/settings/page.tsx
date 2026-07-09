@@ -1,5 +1,8 @@
+import { cookies } from "next/headers";
 import { authDisabled, createClient } from "@/lib/supabase/server";
+import { getPreferenceContext } from "@/engine/preference-context";
 import { Card } from "@/components/ui";
+import SignInNotice from "@/components/SignInNotice";
 import type {
   NotificationChannel,
   SettingsRow,
@@ -45,6 +48,8 @@ function describeCron(cron: string): string | null {
 
 export default async function SettingsPage() {
   const supabase = await createClient();
+  const signInDismissed =
+    (await cookies()).get("signin_notice_dismissed")?.value === "1";
 
   const [settingsRes, channelsRes] = await Promise.all([
     supabase.from("settings").select("*").eq("id", 1).maybeSingle(),
@@ -93,6 +98,11 @@ export default async function SettingsPage() {
   const cron = settings?.weekly_cron ?? DEFAULT_CRON;
   const cronHuman = describeCron(cron);
 
+  // Exactly what the agents read on every run - shown read-only so the operator
+  // can see what's been learned (and knows what to correct via ratings / the
+  // preference summary above).
+  const agentContext = await getPreferenceContext(supabase);
+
   // In-app updates only make sense on a local git checkout.
   const canSelfUpdate =
     !process.env.VERCEL && existsSync(join(process.cwd(), ".git"));
@@ -108,18 +118,7 @@ export default async function SettingsPage() {
         </div>
       </div>
 
-      {authDisabled() ? (
-        <Card>
-          <h2>No sign-in on this instance</h2>
-          <p className="muted" style={{ marginBottom: 0 }}>
-            Normal for localhost. If this app is ever reachable from another
-            machine, turn sign-in on first: set <code>REQUIRE_LOGIN=true</code>{" "}
-            in <code>.env.local</code> and add your email to the{" "}
-            <code>members</code> table (DEPLOY.md has the steps). Without it,
-            anyone who can open this page controls your keys, spend, and data.
-          </p>
-        </Card>
-      ) : null}
+      {authDisabled() && !signInDismissed ? <SignInNotice /> : null}
 
       <Card>
         <h2>API keys</h2>
@@ -138,10 +137,22 @@ export default async function SettingsPage() {
             discovery_rounds: settings?.discovery_rounds ?? 2,
             discovery_target_survivors:
               settings?.discovery_target_survivors ?? 5,
+            discovery_min_fit: settings?.discovery_min_fit ?? 3,
+            discovery_min_alignment: settings?.discovery_min_alignment ?? 3,
             preference_summary: settings?.preference_summary ?? "",
             speed_mode: settings?.speed_mode ?? "thorough",
           }}
         />
+      </Card>
+
+      <Card>
+        <h2>What your agents currently understand</h2>
+        <p className="muted">
+          The exact guidance injected into every agent, built from your ratings
+          and board activity. Rate more grants, or edit the preference summary
+          above, to change it.
+        </p>
+        <pre className="voice-preview">{agentContext}</pre>
       </Card>
 
       <Card>

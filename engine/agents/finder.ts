@@ -51,16 +51,23 @@ export async function runFinder(opts: {
     webSearchMaxUses: opts.fast ? 6 : 10,
   });
 
-  const parsed = parseJsonFromResponse(res.text, res.stopReason);
-  const candidates = Array.isArray(parsed) ? (parsed as Candidate[]) : [];
-  return {
-    candidates,
-    usage: {
-      model: MODELS.sonnet,
-      inputTokens: res.inputTokens,
-      outputTokens: res.outputTokens,
-      stopReason: res.stopReason,
-      webSearchRequests: res.webSearchRequests,
-    },
+  const usage: AgentUsage = {
+    model: MODELS.sonnet,
+    inputTokens: res.inputTokens,
+    outputTokens: res.outputTokens,
+    stopReason: res.stopReason,
+    webSearchRequests: res.webSearchRequests,
   };
+
+  // A parse failure here still spent tokens (web search included). Carry the
+  // usage on the error so tracked() bills it to the daily cap.
+  let parsed: unknown;
+  try {
+    parsed = parseJsonFromResponse(res.text, res.stopReason);
+  } catch (e) {
+    throw Object.assign(e as Error, { usage });
+  }
+
+  const candidates = Array.isArray(parsed) ? (parsed as Candidate[]) : [];
+  return { candidates, usage };
 }

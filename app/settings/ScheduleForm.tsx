@@ -17,6 +17,16 @@ const DAYS: { value: string; label: string }[] = [
   { value: "*", label: "Every day" },
 ];
 
+const DAY_NAMES = [
+  "Sundays",
+  "Mondays",
+  "Tuesdays",
+  "Wednesdays",
+  "Thursdays",
+  "Fridays",
+  "Saturdays",
+];
+
 export default function ScheduleForm({
   initialCron,
   runMode,
@@ -41,15 +51,28 @@ export default function ScheduleForm({
 
   const [hour, minute] = time.split(":").map((n) => parseInt(n, 10));
 
-  // Live local-time preview of the chosen UTC schedule.
+  // Live local-time preview of the chosen UTC schedule. Names the actual zone
+  // (e.g. "7:00 AM PDT") instead of a vague "your time", and names the local day
+  // when the UTC/local boundary shifts it (so "Mondays 00:30 UTC" doesn't
+  // silently mean Sunday where the user lives).
   const localPreview = useMemo(() => {
     if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
     const now = new Date();
     const utc = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour, minute),
     );
-    return utc.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  }, [hour, minute]);
+    const time = utc.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+    let delta = utc.getDay() - utc.getUTCDay();
+    if (delta > 1) delta -= 7; // wrap Saturday -> Sunday etc.
+    if (delta < -1) delta += 7;
+    const dayLabel =
+      delta !== 0 && dow !== "*" ? DAY_NAMES[((Number(dow) + delta) % 7 + 7) % 7] : null;
+    return { time, dayLabel };
+  }, [hour, minute, dow]);
 
   function save() {
     setMsg(null);
@@ -89,7 +112,10 @@ export default function ScheduleForm({
           style={{ width: "auto" }}
         />
         <span className="muted">
-          UTC{localPreview ? ` (${localPreview} your time)` : ""}
+          UTC
+          {localPreview
+            ? ` (${localPreview.dayLabel ? `${localPreview.dayLabel} ` : ""}${localPreview.time} local)`
+            : ""}
         </span>
         <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={pending}>
           {pending ? "Saving…" : "Save schedule"}
