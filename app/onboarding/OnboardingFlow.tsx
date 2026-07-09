@@ -6,7 +6,12 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ONBOARDING_QUESTIONS } from "@/engine/onboarding-questions";
 import type { RunMode } from "@/lib/types";
-import { runOnboardingCompile, saveRunMode, finishOnboarding } from "./actions";
+import {
+  runOnboardingCompile,
+  prefillFromUrl,
+  saveRunMode,
+  finishOnboarding,
+} from "./actions";
 
 const RUN_MODES: {
   value: RunMode;
@@ -44,18 +49,43 @@ export default function OnboardingFlow({ initialMode }: { initialMode: RunMode }
   const [orgName, setOrgName] = useState<string | null>(null);
   const [voice, setVoice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [url, setUrl] = useState("");
+  const [prefillMsg, setPrefillMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const chosen = RUN_MODES.find((m) => m.value === mode);
+  const requiredMissing = ONBOARDING_QUESTIONS.some(
+    (q) => q.required && !answers[q.key]?.trim(),
+  );
 
   function setAnswer(key: string, value: string) {
     setAnswers((a) => ({ ...a, [key]: value }));
   }
 
+  function prefill() {
+    setError(null);
+    setPrefillMsg(null);
+    startTransition(async () => {
+      const res = await prefillFromUrl(url);
+      if (res.ok) {
+        const n = Object.keys(res.answers).length;
+        setAnswers((a) => ({ ...a, ...res.answers }));
+        setPrefillMsg(
+          n > 0
+            ? `Filled in ${n} field${n === 1 ? "" : "s"} from your site - review and edit below.`
+            : "Couldn't find much on that page - fill it in below.",
+        );
+      } else {
+        setPrefillMsg(res.error);
+      }
+    });
+  }
+
   function compile() {
     setError(null);
     startTransition(async () => {
-      const res = await runOnboardingCompile(answers);
+      // Pass the website URL along so the compiler can consult it to fill gaps.
+      const res = await runOnboardingCompile({ ...answers, url });
       if (res.ok) {
         setOrgName(res.orgName);
         setVoice(res.voice);
@@ -104,29 +134,75 @@ export default function OnboardingFlow({ initialMode }: { initialMode: RunMode }
           <div>
             <h1>Tell us about your organization</h1>
             <p className="muted">
-              A few plain questions - we turn your answers into the profile your
-              grant agents search and write with. You can edit all of it later.
+              We turn your answers into the profile your grant agents search and
+              write with. Fields marked <span className="req">*</span> are
+              required; the rest sharpen results. You can edit all of it later.
             </p>
           </div>
 
-          {ONBOARDING_QUESTIONS.map(([key, prompt]) => (
-            <div key={key} className="field">
-              <label htmlFor={`q-${key}`}>{prompt}</label>
-              {key === "url" ? (
-                <input
-                  id={`q-${key}`}
-                  type="text"
-                  value={answers[key] ?? ""}
-                  onChange={(e) => setAnswer(key, e.target.value)}
-                  placeholder="https://…"
+          {/* Optional: auto-fill from the org's website */}
+          <div className="field onb-prefill">
+            <label htmlFor="prefill-url">
+              Have a website? Paste it and we&rsquo;ll fill this in for you
+            </label>
+            <div className="row" style={{ gap: "var(--s2)" }}>
+              <input
+                id="prefill-url"
+                type="url"
+                inputMode="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://yourorg.org"
+                disabled={isPending}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                className="btn"
+                onClick={prefill}
+                disabled={isPending || !url.trim()}
+              >
+                {isPending ? "Reading…" : "Fill from site"}
+              </button>
+            </div>
+            {prefillMsg ? (
+              <span className="field-hint">{prefillMsg}</span>
+            ) : (
+              <span className="field-hint">
+                Optional. We read your public site and draft the answers below -
+                you review and edit before continuing.
+              </span>
+            )}
+          </div>
+
+          {ONBOARDING_QUESTIONS.map((q) => (
+            <div key={q.key} className="field">
+              <label htmlFor={`q-${q.key}`}>
+                {q.label}{" "}
+                {q.required ? (
+                  <span className="req" aria-label="required">
+                    *
+                  </span>
+                ) : (
+                  <span className="muted">(optional)</span>
+                )}
+              </label>
+              {q.multiline ? (
+                <textarea
+                  id={`q-${q.key}`}
+                  value={answers[q.key] ?? ""}
+                  onChange={(e) => setAnswer(q.key, e.target.value)}
+                  rows={3}
+                  placeholder={q.example}
                   disabled={isPending}
                 />
               ) : (
-                <textarea
-                  id={`q-${key}`}
-                  value={answers[key] ?? ""}
-                  onChange={(e) => setAnswer(key, e.target.value)}
-                  rows={3}
+                <input
+                  id={`q-${q.key}`}
+                  type="text"
+                  value={answers[q.key] ?? ""}
+                  onChange={(e) => setAnswer(q.key, e.target.value)}
+                  placeholder={q.example}
                   disabled={isPending}
                 />
               )}
@@ -137,12 +213,16 @@ export default function OnboardingFlow({ initialMode }: { initialMode: RunMode }
 
           <div className="onb-actions">
             <span className="muted onb-hint">
-              {isPending ? "Compiling your profile with AI - this takes a few seconds…" : ""}
+              {isPending
+                ? "Working with AI - this takes a few seconds…"
+                : requiredMissing
+                ? "Fill in the required (*) fields to continue."
+                : ""}
             </span>
             <button
               className="btn btn-primary"
               onClick={compile}
-              disabled={isPending || Object.values(answers).every((v) => !v?.trim())}
+              disabled={isPending || requiredMissing}
             >
               {isPending ? "Setting up…" : "Set up my profile"}
             </button>

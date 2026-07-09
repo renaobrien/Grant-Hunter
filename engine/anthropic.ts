@@ -42,6 +42,41 @@ function stripFancyDashes(s: string): string {
   return s.replace(/\s*[—–]\s*/g, " - ");
 }
 
+/**
+ * Turn a raw Claude/Anthropic error into a short, actionable message for the UI.
+ * The SDK surfaces provider errors as messages containing the provider's text
+ * and status; we match on the common cases so users see "add credits" instead
+ * of a 400 JSON blob.
+ */
+export function friendlyClaudeError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  const low = raw.toLowerCase();
+  if (low.includes("credit balance is too low") || low.includes("plans & billing")) {
+    return "Your Anthropic account is out of credits. Add credits at https://console.anthropic.com/settings/billing, then try again.";
+  }
+  if (
+    low.includes("invalid x-api-key") ||
+    low.includes("authentication_error") ||
+    low.includes("invalid api key") ||
+    low.includes(" 401")
+  ) {
+    return "Your Anthropic API key looks invalid. Check it under Settings -> API keys.";
+  }
+  if (
+    low.includes("rate_limit") ||
+    low.includes("rate limit") ||
+    low.includes(" 429") ||
+    low.includes("overloaded") ||
+    low.includes(" 529")
+  ) {
+    return "Anthropic is busy or rate-limiting right now. Wait a minute and try again.";
+  }
+  if (low.includes("no anthropic api key")) {
+    return raw; // already a clear, actionable message from resolveAnthropicKey()
+  }
+  return `The AI request failed: ${raw}`;
+}
+
 let cachedClient: Anthropic | null = null;
 let cachedKey = "";
 function getClient(apiKey: string): Anthropic {

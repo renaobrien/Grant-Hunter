@@ -704,6 +704,16 @@ input[type="radio"] {
   font-size: 0.78rem;
   color: var(--ink-faint);
 }
+.req {
+  color: var(--tone-bad);
+  font-weight: 700;
+}
+.onb-prefill {
+  padding: var(--s3);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2, transparent);
+}
 .form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

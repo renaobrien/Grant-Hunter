@@ -44,7 +44,7 @@ export async function compileProfile(
   const userMessage = [
     "Compile these onboarding answers into the profile JSON:",
     ...ONBOARDING_QUESTIONS.map(
-      ([key, prompt]) => `${prompt}\nANSWER: ${answers[key]?.trim() || "(skipped)"}`,
+      (q) => `${q.label}\nANSWER: ${answers[q.key]?.trim() || "(skipped)"}`,
     ),
     url ? `If useful, consult the org's site (${url}) to fill gaps.` : "",
   ]

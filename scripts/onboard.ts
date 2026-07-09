@@ -24,9 +24,16 @@ async function main() {
     "\n- Onboarding -\nAnswer a few questions; Claude will compile them into your org profile.\n",
   );
   const answers: Record<string, string> = {};
-  for (const [key, prompt] of ONBOARDING_QUESTIONS) {
-    answers[key] = (await rl.question(`${prompt}\n> `)).trim();
+  for (const q of ONBOARDING_QUESTIONS) {
+    const tag = q.required ? "" : " (optional, Enter to skip)";
+    const hint = q.example ? `\n  ${q.example}` : "";
+    answers[q.key] = (await rl.question(`${q.label}${tag}${hint}\n> `)).trim();
   }
+  answers.url = (
+    await rl.question(
+      "Your website or one-pager URL (optional, Enter to skip)\n> ",
+    )
+  ).trim();
   rl.close();
 
   console.log("\nCompiling profile with Claude…");
