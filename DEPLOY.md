@@ -52,6 +52,12 @@ npm run db:push
 > open to anyone. Setting `REQUIRE_LOGIN=true` turns on magic-link sign-in, gated by your
 > members allowlist.
 
+> The local-only conveniences stay out of your way here: the `/connect` first-run wizard
+> never renders on a configured or login-walled instance (if reached with env missing on
+> Vercel it shows these instructions instead of a form), and the in-app **Run discovery** /
+> **Updates** buttons hide themselves on hosted platforms - discovery runs via GitHub
+> Actions, updates via redeploy.
+
 > You may not know the final URL yet. Deploy once, copy the URL Vercel gives you,
 > then set `APP_BASE_URL` to it and redeploy. It only matters so the magic-link
 > email points at your live site instead of `localhost`.

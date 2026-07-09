@@ -6,44 +6,10 @@
 
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-
-const ENV_PATH = ".env.local";
-
-function readEnv(): Record<string, string> {
-  const env: Record<string, string> = {};
-  if (existsSync(ENV_PATH)) {
-    for (const line of readFileSync(ENV_PATH, "utf8").split("\n")) {
-      const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-      if (m) env[m[1]] = m[2].replace(/^["']|["']$/g, "");
-    }
-  }
-  return env;
-}
-
-function writeEnv(env: Record<string, string>) {
-  const keys = [
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "SUPABASE_URL",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "ANTHROPIC_API_KEY",
-    "RESEND_API_KEY",
-    "RESEND_FROM",
-    "TELEGRAM_BOT_TOKEN",
-    "TELEGRAM_WEBHOOK_SECRET",
-    "APP_BASE_URL",
-    "DAILY_BUDGET_USD",
-  ];
-  // Known keys first, then preserve anything else already in .env.local so a
-  // re-run never silently drops a variable the user added by hand.
-  const extras = Object.keys(env).filter((k) => !keys.includes(k));
-  const lines = [...keys, ...extras]
-    .filter((k) => env[k] !== undefined && env[k] !== "")
-    .map((k) => `${k}=${env[k]}`);
-  writeFileSync(ENV_PATH, lines.join("\n") + "\n");
-}
+// Relative import on purpose: tsx path-alias support is version-dependent.
+import { ENV_PATH, readEnv, writeEnv, deriveProjectUrl } from "../lib/env-file";
 
 async function main() {
   const env = readEnv();
@@ -60,40 +26,6 @@ async function main() {
     if (v) env[key] = v;
   };
 
-  // Turn whatever the user pastes for "Project URL" into the real origin,
-  // https://<ref>.supabase.co. People routinely paste the DASHBOARD url (the
-  // address in their browser: https://supabase.com/dashboard/project/<ref>) or
-  // just the bare 20-char ref - both contain the ref, so we EXTRACT it instead
-  // of rejecting. A wrong origin makes every auth/data call fetch HTML and fail
-  // with "Unexpected token '<' … is not valid JSON", so this must be exact.
-  const REF = /^[a-z0-9]{20}$/;
-  const deriveProjectUrl = (
-    raw: string,
-  ): { url?: string; error?: string; note?: string } => {
-    const input = raw.trim().replace(/\/+$/, "");
-    if (!input) return { error: "Required." };
-    if (REF.test(input)) return { url: `https://${input}.supabase.co`, note: "ref" };
-    let u: URL;
-    try {
-      u = new URL(input);
-    } catch {
-      return {
-        error:
-          "Not a URL or a project ref. Paste your Project URL (https://yourref.supabase.co) or the 20-character ref.",
-      };
-    }
-    const host = u.hostname.toLowerCase();
-    // Already a project origin (…supabase.co) - use it as-is.
-    if (host.endsWith(".supabase.co")) return { url: `https://${host}` };
-    // Dashboard URL - pull the ref out of /project/<ref>.
-    const fromPath = u.pathname.match(/project\/([a-z0-9]{20})/);
-    if (fromPath) return { url: `https://${fromPath[1]}.supabase.co`, note: "dashboard" };
-    return {
-      error:
-        "Couldn't find a project ref in that. Use Supabase → Project Settings → Project URL (ends in .supabase.co), or paste the 20-character ref.",
-    };
-  };
-
   console.log("\nGrant Hunter setup\n");
   {
     // If `supabase link` already ran (step 2), reuse that project ref instead of
@@ -106,7 +38,7 @@ async function main() {
     }
 
     let url: string | undefined;
-    if (REF.test(linkedRef)) {
+    if (/^[a-z0-9]{20}$/.test(linkedRef)) {
       url = `https://${linkedRef}.supabase.co`;
       console.log(`Supabase project: ${url}  (from your 'supabase link')`);
     } else {

@@ -1,8 +1,9 @@
-// Runs page - read-only history of agent_runs (discovery, drafting, etc.).
-// Server Component. No PAT, no GitHub API calls: manual runs are triggered by
-// the operator from the repo's GitHub Actions tab.
+// Runs page - history of agent_runs (discovery, drafting, etc.) plus a local
+// "run discovery now" button (spawns the engine in-process; see
+// app/runs/actions.ts). Hosted instances keep the GitHub Actions path.
 import { createClient } from "@/lib/supabase/server";
 import { Card, Chip, EmptyState, type ChipTone } from "@/components/ui";
+import RunDiscoveryButton from "@/components/RunDiscoveryButton";
 import type { AgentRunRow, AgentRunStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +71,8 @@ export default async function RunsPage() {
     .limit(50);
 
   const runs = (data ?? []) as AgentRunRow[];
+  // In-process runs need a long-lived machine (local/self-host), not serverless.
+  const canRunHere = !process.env.VERCEL;
 
   return (
     <div className="stack">
@@ -79,12 +82,24 @@ export default async function RunsPage() {
 
       <Card className="note-panel">
         <h3>Run discovery now</h3>
-        <p>
-          To find grants on demand, run <code>npm run discover</code> on the
-          computer where you set this up. If you chose cloud runs during setup,
-          you can also trigger <code>Weekly grant discovery</code> from your
-          repository&apos;s GitHub Actions tab.
-        </p>
+        {canRunHere ? (
+          <>
+            <p>
+              Sends your agents hunting for new grants that match your profile.
+            </p>
+            <RunDiscoveryButton />
+            <p className="muted" style={{ marginTop: "var(--s3)", marginBottom: 0 }}>
+              Scheduled runs also work: <code>npm run discover</code> in a
+              terminal, or the <code>Weekly grant discovery</code> workflow in
+              your GitHub repo&apos;s Actions tab.
+            </p>
+          </>
+        ) : (
+          <p>
+            On this hosted instance, trigger <code>Weekly grant discovery</code>{" "}
+            from your repository&apos;s GitHub Actions tab.
+          </p>
+        )}
       </Card>
 
       {error ? (
@@ -96,7 +111,7 @@ export default async function RunsPage() {
       ) : runs.length === 0 ? (
         <EmptyState
           title="No runs yet"
-          hint="Trigger discovery from GitHub Actions to see run history here."
+          hint="Start one with the button above - run history shows up here."
         />
       ) : (
         <div className="table-wrap">

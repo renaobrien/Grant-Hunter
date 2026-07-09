@@ -67,7 +67,9 @@ export default async function RootLayout({
   if (brand?.brand_bg)
     (brandVars as Record<string, string>)["--brand-bg"] = brand.brand_bg;
 
-  const orgName = brand?.org_name?.trim() || "Grant Hunter";
+  // Brand reads "{Org} Grant Hunter" once a profile exists, plain product name before.
+  const org = brand?.org_name?.trim();
+  const orgName = org ? `${org} Grant Hunter` : "Grant Hunter";
 
   return (
     <html lang="en">

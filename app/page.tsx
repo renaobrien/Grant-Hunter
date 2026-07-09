@@ -7,6 +7,7 @@ import {
   type Recommendation,
 } from "@/lib/types";
 import { Chip, ScorePips, EmptyState, type ChipTone } from "@/components/ui";
+import RunDiscoveryButton from "@/components/RunDiscoveryButton";
 import StatusSelect from "./StatusSelect";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +55,8 @@ export default async function BoardPage() {
     .order("date_added", { ascending: false });
 
   const grants = (data ?? []) as CardGrant[];
+  // The in-app run button needs a long-lived machine (local/self-host).
+  const canRunHere = !process.env.VERCEL;
 
   const byStatus = new Map<GrantStatus, CardGrant[]>();
   for (const g of grants) {
@@ -93,14 +96,24 @@ export default async function BoardPage() {
                 </header>
                 <div className="board-col-body">
                   {items.length === 0 ? (
-                    <EmptyState
-                      title="Nothing here yet"
-                      hint={
-                        col.key === "searched"
-                          ? "Run discovery to fill this board (GitHub → Actions → Weekly grant discovery → Run workflow)."
-                          : "Grants land here as they move through the pipeline."
-                      }
-                    />
+                    col.key === "searched" ? (
+                      <div className="stack" style={{ gap: "var(--s3)" }}>
+                        <EmptyState
+                          title="Nothing here yet"
+                          hint={
+                            canRunHere
+                              ? "Run discovery and your agents will fill this board."
+                              : "Run discovery to fill this board (GitHub -> Actions -> Weekly grant discovery -> Run workflow)."
+                          }
+                        />
+                        {canRunHere ? <RunDiscoveryButton label="Find grants now" /> : null}
+                      </div>
+                    ) : (
+                      <EmptyState
+                        title="Nothing here yet"
+                        hint="Grants land here as they move through the pipeline."
+                      />
+                    )
                   ) : (
                     items.map((g) => (
                       <Link

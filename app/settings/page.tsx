@@ -1,9 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, FieldRow, Chip } from "@/components/ui";
-import type { SettingsRow, NotificationChannelRow } from "@/lib/types";
+import type {
+  NotificationChannel,
+  SettingsRow,
+  NotificationChannelRow,
+} from "@/lib/types";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import SettingsForm from "./SettingsForm";
-import ChannelsEditor from "./ChannelsEditor";
+import ChannelsEditor, { type ChannelView } from "./ChannelsEditor";
 import ApiKeysForm from "./ApiKeysForm";
+import UpdatePanel from "./UpdatePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -47,13 +54,47 @@ export default async function SettingsPage() {
   ]);
 
   const settings = (settingsRes.data as SettingsRow | null) ?? null;
-  const channels = (channelsRes.data as NotificationChannelRow[] | null) ?? [];
+  const channelRows =
+    (channelsRes.data as NotificationChannelRow[] | null) ?? [];
 
-  // Presence only - the key value itself is never passed to the client.
-  const hasAnthropicKey = Boolean(settings?.anthropic_api_key);
+  // Strip secrets BEFORE anything reaches the client: webhook URLs, bot tokens
+  // and API keys become presence booleans. Env fallbacks count as configured.
+  const channels: ChannelView[] = channelRows.map((row) => {
+    const cfg = (row.config ?? {}) as Record<string, unknown>;
+    const has = (k: string) => typeof cfg[k] === "string" && !!cfg[k];
+    const hasSecret =
+      row.channel === "telegram"
+        ? has("bot_token") || Boolean(process.env.TELEGRAM_BOT_TOKEN)
+        : row.channel === "email"
+        ? has("api_key") || Boolean(process.env.RESEND_API_KEY)
+        : has("webhook_url");
+    return {
+      channel: row.channel as NotificationChannel,
+      enabled: row.enabled,
+      hasSecret,
+      chat_id: typeof cfg.chat_id === "string" ? cfg.chat_id : "",
+      recipients: Array.isArray(cfg.recipients)
+        ? (cfg.recipients as string[]).join(", ")
+        : "",
+      from: typeof cfg.from === "string" ? cfg.from : "",
+    };
+  });
+
+  // Presence only - key VALUES never reach the client. Mirror the engine's
+  // resolveAnthropicKey(): dashboard (DB) first, .env.local fallback.
+  const keySource = settings?.anthropic_api_key
+    ? ("dashboard" as const)
+    : process.env.ANTHROPIC_API_KEY?.trim()
+    ? ("env" as const)
+    : null;
+  const hasAnthropicKey = keySource !== null;
 
   const cron = settings?.weekly_cron ?? DEFAULT_CRON;
   const cronHuman = describeCron(cron);
+
+  // In-app updates only make sense on a local git checkout.
+  const canSelfUpdate =
+    !process.env.VERCEL && existsSync(join(process.cwd(), ".git"));
 
   return (
     <div className="stack">
@@ -72,7 +113,7 @@ export default async function SettingsPage() {
           The Anthropic key the agents spend. Set it here and you never need to
           touch <code>.env.local</code> - it&rsquo;s stored on your own database.
         </p>
-        <ApiKeysForm hasKey={hasAnthropicKey} />
+        <ApiKeysForm hasKey={hasAnthropicKey} source={keySource} />
       </Card>
 
       <Card>
@@ -110,6 +151,16 @@ export default async function SettingsPage() {
         </p>
         <ChannelsEditor channels={channels} />
       </Card>
+
+      {canSelfUpdate ? (
+        <Card>
+          <h2>Updates</h2>
+          <p className="muted">
+            Pulls the latest app code straight from GitHub - no re-downloading.
+          </p>
+          <UpdatePanel />
+        </Card>
+      ) : null}
     </div>
   );
 }

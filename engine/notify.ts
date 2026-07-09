@@ -8,8 +8,10 @@
 // Channel config shapes (notification_channels.config jsonb):
 //   slack:    { webhook_url: string }
 //   discord:  { webhook_url: string }
-//   telegram: { chat_id: string }            // bot token from env TELEGRAM_BOT_TOKEN
-//   email:    { recipients: string[], from: string }  // api key from env RESEND_API_KEY
+//   telegram: { chat_id: string, bot_token?: string }  // token: config first, env TELEGRAM_BOT_TOKEN fallback
+//   email:    { recipients: string[], from: string, api_key?: string }  // key: config first, env RESEND_API_KEY fallback
+// Secrets saved from the Settings UI live in config; env vars remain the
+// CI/CLI path. Same DB-first-env-fallback rule as the Anthropic key.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
@@ -48,9 +50,13 @@ async function dispatchDiscord(cfg: Record<string, unknown>, text: string): Prom
 }
 
 async function dispatchTelegram(cfg: Record<string, unknown>, text: string): Promise<void> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token =
+    (typeof cfg.bot_token === "string" && cfg.bot_token) ||
+    process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
-    console.error("[notify] telegram channel enabled but TELEGRAM_BOT_TOKEN is unset - skipping");
+    console.error(
+      "[notify] telegram channel enabled but no bot token (Settings or TELEGRAM_BOT_TOKEN) - skipping",
+    );
     return;
   }
   const chatId = cfg.chat_id;
@@ -66,9 +72,13 @@ async function dispatchEmail(
   subject: string,
   text: string,
 ): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey =
+    (typeof cfg.api_key === "string" && cfg.api_key) ||
+    process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error("[notify] email channel enabled but RESEND_API_KEY is unset - skipping");
+    console.error(
+      "[notify] email channel enabled but no Resend key (Settings or RESEND_API_KEY) - skipping",
+    );
     return;
   }
   const recipients = cfg.recipients;

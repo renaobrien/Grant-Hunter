@@ -16,46 +16,40 @@ Each organization runs its own private copy. You clone the
 repo, plug in your own accounts (Supabase for the database, an Anthropic key for the
 AI, plus any notification channels you want), and run it. 
 
-You can run the whole thing from your own computer - no GitHub account needed:
-
-**One-time setup** - run these once, in order, one line at a time (don't paste the whole
-block at once):
+You can run the whole thing from your own computer - three commands, then the browser
+walks you through the rest:
 
 ```bash
 git clone https://github.com/renaobrien/Grant-Hunter grants
 cd grants
-npm install                                        # installs tsx, next, etc. Required first.
-npx supabase login
-npx supabase link --project-ref YOUR_PROJECT_REF   # a short ID, NOT a URL - see note below
-npm run db:push    # create the database tables
-npm run setup      # writes .env.local with your keys - MUST run before `npm run dev`
-npm run onboard    # a short AI interview that builds your org profile
+npm install
+npm run dev        # open http://localhost:3000
 ```
 
-> **Order matters.** `npm run setup` is what creates `.env.local`. If you run `npm run dev`
-> before it, the app has no keys and errors with "needs NEXT_PUBLIC_SUPABASE_URL...". And if
-> you see `tsx: command not found` or `next: command not found`, you skipped `npm install`.
+The app takes it from there, in your browser:
 
-The `git clone` needs **no GitHub login or password** - this is a public repo. (If git
-prompts you for a username/password, you're on an old/private URL; use the URL above.)
+1. **Connect your database** - a guided page asks for your (free) Supabase project's ref
+   and two keys, tests the connection, and even hands you the SQL to create the tables.
+2. **Onboarding** - tell it about your org (or paste your website and let it fill the form).
+3. **Find grants** - hit **Run discovery now** on the board. Done.
 
-**`YOUR_PROJECT_REF`** is your Supabase project's short ID (like `aussykjrxblarjllmdor`),
-under **Project Settings → General → Reference ID**. Paste just the ID - not a URL.
+Notes: the `git clone` needs **no GitHub login or password** (public repo). If you see
+`next: command not found`, you skipped `npm install`. Prefer no Git? Download the ZIP from
+GitHub instead - **[SETUP.md](SETUP.md)** has the full walkthrough, plus an optional
+CLI path for terminal fans.
 
-New to this, or don't use Git? **[SETUP.md](SETUP.md)** has the full walkthrough,
-including a no-Git download option.
-
-**Day to day** - once setup is done, these are all you use:
+**Day to day** you only need one command (everything else is buttons in the app):
 
 ```bash
-npm run dev        # open the dashboard at http://localhost:3000 (needs setup done first)
-npm run discover   # find new grants now
-npm run jobs       # process drafts + send deadline reminders
+npm run dev        # open the dashboard at http://localhost:3000
 ```
 
+Run discovery from the **board or Runs page**, manage your **Anthropic key** and
+**notification channels** under Settings, and pull app updates with **Settings ->
+Updates** - no re-downloading, no config files.
+
 Running locally, it opens **straight to the dashboard - no login** (a sign-in wall on your
-own machine is just friction). Add your **Anthropic key** in the app under **Settings → API
-keys** - no config files to edit.
+own machine is just friction).
 
 Want login anyway? It's one setting: add `REQUIRE_LOGIN=true` to `.env.local` and restart,
 and you get magic-link sign-in gated by a members allowlist. Hosting publicly? You should

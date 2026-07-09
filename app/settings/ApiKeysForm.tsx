@@ -3,11 +3,22 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { saveAnthropicKey } from "./actions";
 
-// Write-only key management. We never receive the stored key from the server - // only whether one is set - so we can't (and shouldn't) show it. The user types
-// a new value to set/replace it, or clears it to fall back to the env var.
-export default function ApiKeysForm({ hasKey }: { hasKey: boolean }) {
+// Write-only key management. We never receive the stored key from the server -
+// only whether one is set (and where) - so we can't (and shouldn't) show it.
+// The user types a new value to set/replace it, or clears it to fall back to
+// the env var.
+export type KeySource = "dashboard" | "env" | null;
+
+export default function ApiKeysForm({
+  hasKey,
+  source = null,
+}: {
+  hasKey: boolean;
+  source?: KeySource;
+}) {
   const [value, setValue] = useState("");
   const [configured, setConfigured] = useState(hasKey);
+  const [savedHere, setSavedHere] = useState(source === "dashboard");
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -16,9 +27,20 @@ export default function ApiKeysForm({ hasKey }: { hasKey: boolean }) {
     startTransition(async () => {
       const res = await saveAnthropicKey(next);
       if (res.ok) {
-        setConfigured(next.trim().length > 0);
+        const set = next.trim().length > 0;
+        // Clearing removes the dashboard copy; an env-provided key (if any)
+        // takes over again, but we can't know that from here - report cleared.
+        setConfigured(set || (source === "env" && !set));
+        setSavedHere(set);
         setValue("");
-        setMsg({ ok: true, text: next.trim() ? "Key saved." : "Key cleared." });
+        setMsg({
+          ok: true,
+          text: set
+            ? "Key saved."
+            : source === "env"
+            ? "Dashboard key cleared - using the one from .env.local again."
+            : "Key cleared.",
+        });
       } else {
         setMsg({ ok: false, text: res.error });
       }
@@ -36,7 +58,11 @@ export default function ApiKeysForm({ hasKey }: { hasKey: boolean }) {
         <label htmlFor="anthropic_api_key">
           Anthropic API key{" "}
           <span className="muted">
-            {configured ? "- configured ✓" : "- not set"}
+            {configured
+              ? savedHere
+                ? "- configured ✓ (saved here)"
+                : "- configured ✓ (from .env.local)"
+              : "- not set"}
           </span>
         </label>
         <input
@@ -69,7 +95,7 @@ export default function ApiKeysForm({ hasKey }: { hasKey: boolean }) {
         >
           {pending ? "Saving…" : configured ? "Replace key" : "Save key"}
         </button>
-        {configured ? (
+        {savedHere ? (
           <button
             type="button"
             className="btn"

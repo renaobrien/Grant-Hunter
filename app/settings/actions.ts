@@ -1,8 +1,12 @@
 "use server";
 
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { NotificationChannel } from "@/lib/types";
+
+const run = promisify(execFile);
 
 // Result shape returned to the client forms so they can render inline feedback.
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -73,6 +77,11 @@ export async function saveAnthropicKey(key: string): Promise<ActionResult> {
 }
 
 // Upsert one notification channel row keyed on the unique `channel` column.
+// Secret-bearing config fields are write-only in the UI: the client sends them
+// ONLY when the user typed a replacement, so an empty/missing value here means
+// "keep whatever is stored". Non-secret fields overwrite as sent.
+const SECRET_CONFIG_KEYS = ["webhook_url", "bot_token", "api_key"] as const;
+
 export async function upsertChannel(
   channel: NotificationChannel,
   enabled: boolean,
@@ -83,11 +92,120 @@ export async function upsertChannel(
   }
 
   const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("notification_channels")
+    .select("config")
+    .eq("channel", channel)
+    .maybeSingle();
+  const prev = (existing?.config ?? {}) as Record<string, unknown>;
+
+  const merged: Record<string, unknown> = { ...config };
+  for (const key of SECRET_CONFIG_KEYS) {
+    const incoming = merged[key];
+    if ((incoming === undefined || incoming === "") && prev[key]) {
+      merged[key] = prev[key]; // blank = keep the stored secret
+    }
+    if (merged[key] === "") delete merged[key];
+  }
+
   const { error } = await supabase
     .from("notification_channels")
-    .upsert({ channel, enabled, config }, { onConflict: "channel" });
+    .upsert({ channel, enabled, config: merged }, { onConflict: "channel" });
 
   if (error) return { ok: false, error: error.message };
   revalidatePath("/settings");
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// In-app updates (local git checkouts only). "Update now" = git pull --ff-only,
+// so a user never has to re-download the app to get fixes. Guarded off on
+// hosted platforms (they redeploy from GitHub instead).
+// ---------------------------------------------------------------------------
+
+export interface UpdateCheck {
+  ok: boolean;
+  behind?: number;
+  latest?: string;
+  current?: string;
+  error?: string;
+}
+
+export async function checkForUpdates(): Promise<UpdateCheck> {
+  if (process.env.VERCEL) {
+    return { ok: false, error: "Hosted instances update by redeploying from GitHub." };
+  }
+  try {
+    const cwd = process.cwd();
+    await run("git", ["fetch", "--quiet", "origin", "main"], { cwd });
+    const [behindOut, latestOut, currentOut] = await Promise.all([
+      run("git", ["rev-list", "--count", "HEAD..origin/main"], { cwd }),
+      run("git", ["log", "-1", "--format=%s", "origin/main"], { cwd }),
+      run("git", ["log", "-1", "--format=%s", "HEAD"], { cwd }),
+    ]);
+    return {
+      ok: true,
+      behind: parseInt(behindOut.stdout.trim(), 10) || 0,
+      latest: latestOut.stdout.trim(),
+      current: currentOut.stdout.trim(),
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: `Couldn't check for updates: ${(e as Error).message.split("\n")[0]}`,
+    };
+  }
+}
+
+export interface UpdateApply {
+  ok: boolean;
+  message: string;
+  notes: string[];
+}
+
+export async function applyUpdate(): Promise<UpdateApply> {
+  if (process.env.VERCEL) {
+    return { ok: false, message: "Hosted instances update by redeploying from GitHub.", notes: [] };
+  }
+  const cwd = process.cwd();
+  try {
+    await run("git", ["pull", "--ff-only", "origin", "main"], { cwd });
+  } catch (e) {
+    return {
+      ok: false,
+      message: `Update failed: ${(e as Error).message.split("\n").slice(0, 2).join(" ")}. If you edited files locally, commit or discard those changes first.`,
+      notes: [],
+    };
+  }
+
+  const notes: string[] = [];
+  try {
+    const diff = await run("git", ["diff", "--name-only", "ORIG_HEAD..HEAD"], { cwd });
+    const changed = diff.stdout.split("\n").filter(Boolean);
+    if (changed.includes("package-lock.json")) {
+      notes.push("Installing updated dependencies (this can take a minute)…");
+      await run("npm", ["install", "--no-audit", "--no-fund"], { cwd });
+      notes.push("Dependencies installed.");
+    }
+    const migrations = changed.filter(
+      (f) => f.startsWith("supabase/migrations/") && f.endsWith(".sql"),
+    );
+    if (migrations.length) {
+      notes.push(
+        `New database migration${migrations.length > 1 ? "s" : ""} arrived (${migrations
+          .map((m) => m.split("/").pop())
+          .join(", ")}). Run the SQL in your Supabase SQL editor - open /connect for the combined script - or run npm run db:push.`,
+      );
+    }
+  } catch {
+    // Diff inspection is best-effort; the pull itself already succeeded.
+  }
+
+  revalidatePath("/", "layout");
+  return {
+    ok: true,
+    message: "Updated. The dev server hot-reloads most changes - restart npm run dev if anything looks off.",
+    notes,
+  };
 }

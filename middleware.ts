@@ -41,6 +41,20 @@ async function onboardingGateNoLogin(
 }
 
 export async function middleware(request: NextRequest) {
+  // Unconfigured instance (fresh clone, no .env.local yet): send everything to
+  // the /connect wizard BEFORE any Supabase client is constructed - otherwise
+  // both branches below crash on missing env. /connect itself is excluded from
+  // the matcher so it never loops.
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/connect";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   // Login is OFF by default: skip the auth gate (no /login, no members check).
   // It only turns on when a public host sets REQUIRE_LOGIN=true. Keep this in
   // sync with authDisabled() in lib/supabase/server.ts. We STILL run the
@@ -139,5 +153,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|auth).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|auth|connect).*)"],
 };

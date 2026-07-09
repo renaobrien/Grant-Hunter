@@ -1,76 +1,116 @@
 "use client";
 
+// Notification channel editor. SECURITY: this client component never receives
+// secret values - the server passes presence booleans (see ChannelView in
+// page.tsx). Secret inputs are write-only: blank keeps the stored value, typing
+// replaces it (upsertChannel merges server-side).
 import { useState, useTransition, type FormEvent } from "react";
 import { upsertChannel } from "./actions";
-import type {
-  NotificationChannel,
-  NotificationChannelRow,
-} from "@/lib/types";
+import type { NotificationChannel } from "@/lib/types";
+
+export interface ChannelView {
+  channel: NotificationChannel;
+  enabled: boolean;
+  /** A secret (webhook / bot token / API key) is already stored or in env. */
+  hasSecret: boolean;
+  chat_id: string;
+  recipients: string;
+  from: string;
+}
 
 interface ChannelDef {
   channel: NotificationChannel;
   label: string;
   blurb: string;
+  guideHref: string;
+  guideLabel: string;
+  secretLabel: string | null;
+  secretPlaceholder: string;
 }
 
 const DEFS: ChannelDef[] = [
-  { channel: "slack", label: "Slack", blurb: "Post alerts to an incoming webhook." },
-  { channel: "discord", label: "Discord", blurb: "Post alerts to a channel webhook." },
-  { channel: "telegram", label: "Telegram", blurb: "Send alerts to a bot chat." },
-  { channel: "email", label: "Email", blurb: "Send alerts to a recipient list." },
+  {
+    channel: "slack",
+    label: "Slack",
+    blurb: "Post alerts to an incoming webhook.",
+    guideHref: "https://api.slack.com/messaging/webhooks",
+    guideLabel: "Get a Slack webhook",
+    secretLabel: "Webhook URL",
+    secretPlaceholder: "https://hooks.slack.com/services/…",
+  },
+  {
+    channel: "discord",
+    label: "Discord",
+    blurb: "Post alerts to a channel webhook.",
+    guideHref: "https://support.discord.com/hc/en-us/articles/228383668",
+    guideLabel: "Get a Discord webhook",
+    secretLabel: "Webhook URL",
+    secretPlaceholder: "https://discord.com/api/webhooks/…",
+  },
+  {
+    channel: "telegram",
+    label: "Telegram",
+    blurb: "Send alerts to a bot chat.",
+    guideHref: "https://core.telegram.org/bots/features#botfather",
+    guideLabel: "Create a bot with @BotFather",
+    secretLabel: "Bot token",
+    secretPlaceholder: "123456:ABC…",
+  },
+  {
+    channel: "email",
+    label: "Email",
+    blurb: "Send alerts to a recipient list (via Resend).",
+    guideHref: "https://resend.com/docs/dashboard/api-keys/introduction",
+    guideLabel: "Get a Resend API key",
+    secretLabel: "Resend API key",
+    secretPlaceholder: "re_…",
+  },
 ];
 
-export default function ChannelsEditor({
-  channels,
-}: {
-  channels: NotificationChannelRow[];
-}) {
+export default function ChannelsEditor({ channels }: { channels: ChannelView[] }) {
   return (
     <div className="channel-list">
       {DEFS.map((def) => (
         <ChannelRow
           key={def.channel}
           def={def}
-          existing={channels.find((c) => c.channel === def.channel) ?? null}
+          view={
+            channels.find((c) => c.channel === def.channel) ?? {
+              channel: def.channel,
+              enabled: false,
+              hasSecret: false,
+              chat_id: "",
+              recipients: "",
+              from: "",
+            }
+          }
         />
       ))}
     </div>
   );
 }
 
-function ChannelRow({
-  def,
-  existing,
-}: {
-  def: ChannelDef;
-  existing: NotificationChannelRow | null;
-}) {
-  const cfg = (existing?.config ?? {}) as Record<string, unknown>;
-
-  const [enabled, setEnabled] = useState<boolean>(existing?.enabled ?? false);
-  const [webhookUrl, setWebhookUrl] = useState<string>(
-    typeof cfg.webhook_url === "string" ? cfg.webhook_url : "",
-  );
-  const [chatId, setChatId] = useState<string>(
-    typeof cfg.chat_id === "string" ? cfg.chat_id : "",
-  );
-  const [recipients, setRecipients] = useState<string>(
-    Array.isArray(cfg.recipients) ? (cfg.recipients as string[]).join(", ") : "",
-  );
-  const [from, setFrom] = useState<string>(
-    typeof cfg.from === "string" ? cfg.from : "",
-  );
+function ChannelRow({ def, view }: { def: ChannelDef; view: ChannelView }) {
+  const [enabled, setEnabled] = useState<boolean>(view.enabled);
+  const [secret, setSecret] = useState("");
+  const [hasSecret, setHasSecret] = useState(view.hasSecret);
+  const [chatId, setChatId] = useState(view.chat_id);
+  const [recipients, setRecipients] = useState(view.recipients);
+  const [from, setFrom] = useState(view.from);
 
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   function buildConfig(): Record<string, unknown> {
+    // Secret keys are included ONLY when the user typed a replacement; the
+    // server keeps the stored value otherwise.
+    const s = secret.trim();
     switch (def.channel) {
       case "slack":
       case "discord":
-        return { webhook_url: webhookUrl.trim() };
+        return s ? { webhook_url: s } : {};
       case "telegram":
-        return { chat_id: chatId.trim() };
+        return { chat_id: chatId.trim(), ...(s ? { bot_token: s } : {}) };
       case "email":
         return {
           recipients: recipients
@@ -78,6 +118,7 @@ function ChannelRow({
             .map((r) => r.trim())
             .filter(Boolean),
           from: from.trim(),
+          ...(s ? { api_key: s } : {}),
         };
       default:
         return {};
@@ -89,11 +130,13 @@ function ChannelRow({
     setMsg(null);
     startTransition(async () => {
       const res = await upsertChannel(def.channel, enabled, buildConfig());
-      setMsg(
-        res.ok
-          ? { ok: true, text: "Saved." }
-          : { ok: false, text: res.error },
-      );
+      if (res.ok) {
+        if (secret.trim()) setHasSecret(true);
+        setSecret("");
+        setMsg({ ok: true, text: "Saved." });
+      } else {
+        setMsg({ ok: false, text: res.error });
+      }
     });
   }
 
@@ -117,18 +160,35 @@ function ChannelRow({
       </div>
 
       <div className="channel-fields">
-        {(def.channel === "slack" || def.channel === "discord") && (
+        {def.secretLabel ? (
           <div className="field">
-            <label htmlFor={`${def.channel}-webhook`}>Webhook URL</label>
+            <label htmlFor={`${def.channel}-secret`}>
+              {def.secretLabel}{" "}
+              <span className="muted">
+                {hasSecret ? "- configured ✓" : "- not set"}
+              </span>
+            </label>
             <input
-              id={`${def.channel}-webhook`}
-              type="url"
-              placeholder="https://hooks…"
-              value={webhookUrl}
-              onChange={(e) => setWebhookUrl(e.target.value)}
+              id={`${def.channel}-secret`}
+              type="password"
+              autoComplete="off"
+              placeholder={
+                hasSecret
+                  ? "Paste a new one to replace (blank keeps current)"
+                  : def.secretPlaceholder
+              }
+              value={secret}
+              onChange={(e) => setSecret(e.target.value)}
             />
+            <span className="field-hint">
+              Don&rsquo;t have one?{" "}
+              <a href={def.guideHref} target="_blank" rel="noreferrer">
+                {def.guideLabel} ↗
+              </a>
+              . Stored on your own database; never shown again after saving.
+            </span>
           </div>
-        )}
+        ) : null}
 
         {def.channel === "telegram" && (
           <div className="field">
@@ -140,6 +200,13 @@ function ChannelRow({
               value={chatId}
               onChange={(e) => setChatId(e.target.value)}
             />
+            <span className="field-hint">
+              Message your bot once, then ask{" "}
+              <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer">
+                @userinfobot ↗
+              </a>{" "}
+              for your numeric chat id.
+            </span>
           </div>
         )}
 
@@ -165,6 +232,9 @@ function ChannelRow({
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
               />
+              <span className="field-hint">
+                Must be a sender your Resend account has verified.
+              </span>
             </div>
           </>
         )}

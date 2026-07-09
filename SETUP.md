@@ -1,15 +1,16 @@
-# Setup - stand up your own instance (~15 min)
+# Setup - stand up your own instance (~10 min)
 
 You'll run your own private copy: your Supabase database, your Anthropic key, running on your own machine (host it later if you want). Nothing is shared with anyone else.
 
 ## Prerequisites
 
 - **Node 20+** and **npm** (Node 22 recommended - supabase-js warns on 20)
-- A **Supabase** account → create one project, note the project ref. The **free tier** is
-  fine to start (2 free projects per org); a dedicated project is **~$10/mo** beyond that.
-- An **Anthropic API key** (`sk-ant-…`) - this is what the agents spend; see [costs](#costs--safety) below.
+- A **Supabase** account → create one project (**New project**, any name). The **free tier**
+  is fine to start (2 free projects per org); a dedicated project is **~$10/mo** beyond that.
+- An **Anthropic API key** (`sk-ant-…`) - this is what the agents spend; see [costs](#costs--safety) below. You can add it later in the app if you don't have it yet.
 - *(optional)* a channel to receive digests: a **Slack**/**Discord** webhook URL, a **Telegram**
-  bot token, or a **Resend** API key for email. You can pick more than one, or skip and add later.
+  bot token, or a **Resend** API key for email. Add these later in **Settings** - each field
+  links to the channel's official guide.
 
 ## 1. Get the code onto your computer
 
@@ -46,124 +47,94 @@ npm install
 > Tip (macOS): type `cd ` (with a space), then drag the folder from Finder onto the
 > terminal window - it fills in the path for you. Press Enter.
 
-## 2. Create the database
+## 2. Start the app - the browser does the rest
 
-Link the repo to your Supabase project and push the schema:
+```bash
+npm run dev
+```
+
+Open **http://localhost:3000**. Because nothing is configured yet, the app takes you to a
+**Connect your database** page that walks you through everything:
+
+1. **Project ref** - in Supabase: **Project Settings → General → Reference ID** (a
+   20-character ID like `njvrhzqehxqhbnlqyjag`). Pasting your project's URL, or even the
+   dashboard address from your browser bar, also works - the app pulls the ref out.
+2. **anon / publishable key** and **service_role / secret key** - in Supabase: **Project
+   Settings**, the **API keys** section (click **Reveal** for the secret one). Long strings
+   starting `eyJ…`.
+3. *(optional)* your **Anthropic key** - or skip and add it later in **Settings → API keys**.
+
+Hit **Connect**. The app verifies the connection, saves everything to a local `.env.local`
+file, and - if your database is brand new - shows you one block of SQL with an **Open your
+SQL editor** button: paste, click **Run** in Supabase, come back, hit **Check again**.
+That creates the tables. Done.
+
+> ⚠️ The **`service_role`** key is a **secret** - it bypasses row-level security. The app
+> stores it only in your local `.env.local` (git-ignored) and never sends it to the browser.
+> The **anon** key is the safe-for-browsers one; they're different keys - don't mix them up.
+
+Then the app drops you into **onboarding**: describe your org (or paste your website and
+let the AI draft the form), pick how the engine runs, and land on your board.
+
+> **Want it online instead of your laptop?** Follow **[DEPLOY.md](DEPLOY.md)** - you set the
+> same values as environment variables in your host (e.g. Vercel) and add the Anthropic key
+> from the dashboard after signing in.
+
+<details>
+<summary><strong>Prefer the terminal? The CLI path still works</strong></summary>
 
 ```bash
 npx supabase login
-npx supabase link --project-ref YOUR_PROJECT_REF   # your ref - a short ID, NOT a URL
+npx supabase link --project-ref YOUR_PROJECT_REF   # the same 20-char ref
 npm run db:push        # applies everything in supabase/migrations/
+npm run setup          # interactive: writes .env.local, seeds the owner, channels
+npm run onboard        # the org interview, in the terminal
 ```
 
-> **What's a project ref?** Here "link" is a verb - the command connects this folder to
-> your Supabase project; it is **not** asking for a URL. `--project-ref` wants your
-> project's **ref**: a 20-character ID like `aussykjrxblarjllmdor`. Find it in your
-> project's URL - `https://supabase.com/dashboard/project/aussykjrxblarjllmdor` - or under
-> **Project Settings → General → Reference ID**. Paste just that ID: no `https://`, no
-> `.supabase.co`.
+`npm run setup` accepts the ref, a project URL, or the dashboard URL - it derives the right
+value either way. Safe to re-run any time.
 
-> No Edge Functions to deploy - Supabase is just Postgres + Auth here.
+</details>
 
-## 3. Run setup
-
-`npm run setup` asks you to paste a few values. Grab them **before** you run it.
-
-### Get your three Supabase values
-
-In your Supabase project, open **Project Settings** (the gear icon) and find the **API**
-section (in some dashboard versions the URL lives under **Data API** and the keys under
-**API Keys** - same values, just split across two pages). You need exactly three things:
-
-| Setup prompts for… | In Supabase it's labeled… | Looks like |
-|---|---|---|
-| **project ref** | **Reference ID** (Project Settings → General) - the same ID you used with `supabase link` | `njvrhzqehxqhbnlqyjag` (20 chars) |
-| **anon / public key** | **`anon` `public`** (a.k.a. **Publishable**) | long string starting `eyJ…` |
-| **service_role key** | **`service_role` `secret`** (a.k.a. **Secret**) - click **Reveal** | long string starting `eyJ…` |
-
-> **About the project ref:** you already used it in step 2 (`supabase link --project-ref …`).
-> Setup just asks for that same 20-character ID and builds the `https://yourref.supabase.co`
-> URL itself. If you'd rather paste the full **Project URL** or even the **dashboard** URL
-> from your browser bar, that also works - setup pulls the ref out of whatever you give it.
-> Only a value with no ref (like plain `https://supabase.com`) is refused.
->
-> Why it matters: a wrong value makes sign-in and every data load fail with
-> **`Unexpected token '<', "<!DOCTYPE"… is not valid JSON`** - the app fetched a web page
-> instead of your database. If you hit that from an earlier attempt: re-run `npm run setup`
-> (or fix the `…SUPABASE_URL=` lines in `.env.local`) and restart `npm run dev`.
-
-> ⚠️ The **`service_role`** key is a **secret** - it bypasses all row-level security. It
-> only ever goes in your local `.env.local` (which is git-ignored) and, later, GitHub repo
-> secrets. Never paste it into the browser, client code, or anywhere public. The **`anon`**
-> key is safe to expose (it's meant for the browser); they are two different keys - don't
-> mix them up.
->
-> Newer Supabase dashboards may label these **Publishable** (= anon) and **Secret**
-> (= service_role). Use those if that's what you see.
-
-You'll also need the **email** you want as the **owner** (it tags your grant ratings, and
-becomes your login if you ever turn login on - locally the app runs with no sign-in).
-
-> **Anthropic API key - optional at this step.** Setup will offer to take it, but you can
-> just press Enter and add it later in the app under **Settings → API keys**. That's the
-> key the agents spend (`sk-ant-…`, from [console.anthropic.com](https://console.anthropic.com/settings/keys)) - > it's stored in your database, so you never have to edit `.env.local` for it.
-
-### Then run it
-
-```bash
-npm run setup
-```
-
-It writes `.env.local`, verifies it can reach the database, and adds you to the `members`
-allowlist. Safe to re-run any time.
-
-> **Want it online instead of your laptop?** Skip `npm run setup` entirely and follow
-> **[DEPLOY.md](DEPLOY.md)** - you set the same values as environment variables in your host
-> (e.g. Vercel) and add the Anthropic key from the dashboard after signing in.
-
-## Notifications - pick your channel(s)
+## 3. Notifications - pick your channel(s)
 
 Weekly digests + alerts (new grant, deadline, draft ready) go to whichever channels you turn
-on. `npm run setup` prompts you for these - you can pick **more than one**, and re-running
-setup updates them in place. Grab the credential you want *before* running setup so you can
-paste it when asked. Full step-by-step for each:
+on. Set them up in the app under **Settings → Notifications** - each channel has a
+write-only credential field and a link to the channel's official guide. You can pick more
+than one, and change them any time. (The CLI `npm run setup` also offers the same wizard.)
+Quick reference for getting each credential:
 
 ### Slack (webhook - 2 min)
 1. Go to <https://api.slack.com/apps> → **Create New App** → **From scratch**; name it, pick your workspace.
 2. In the app, open **Incoming Webhooks** → toggle **Activate Incoming Webhooks** on.
 3. Click **Add New Webhook to Workspace**, choose the channel, **Allow**.
-4. Copy the webhook URL (`https://hooks.slack.com/services/…`) and paste it when setup asks. No env var needed.
+4. Copy the webhook URL (`https://hooks.slack.com/services/…`) and paste it in **Settings → Notifications → Slack**.
 
 ### Discord (webhook - 1 min)
 1. In your server, open **Server Settings → Integrations → Webhooks → New Webhook**.
 2. Pick the channel, click **Copy Webhook URL**.
-3. Paste it when setup asks. No env var needed.
+3. Paste it in **Settings → Notifications → Discord**.
 
 ### Telegram (bot - 3 min)
 1. In Telegram, message [@BotFather](https://t.me/BotFather) → `/newbot`, follow the prompts. It gives you a **bot token** (`123456:ABC…`).
 2. Send your new bot any message (so it can reply to you), then message [@userinfobot](https://t.me/userinfobot) to get your numeric **chat_id**.
-3. Enter the token and chat_id when setup asks. The token is saved to `.env.local` as `TELEGRAM_BOT_TOKEN`.
+3. Enter the token and chat_id in **Settings → Notifications → Telegram**. (The `TELEGRAM_BOT_TOKEN` env var also works for CI.)
 
 ### Email (Resend - 3 min)
 1. Sign up at [resend.com](https://resend.com) (free tier = 100 emails/day).
 2. **Domains** → add and verify a sending domain (or use their test/onboarding sender to start).
 3. **API Keys** → **Create API Key**, copy it (`re_…`).
-4. Enter the API key, a verified **From** address, and your recipient list when setup asks. The key is saved to `.env.local` as `RESEND_API_KEY`.
+4. Enter the API key, a verified **From** address, and your recipient list in **Settings → Notifications → Email**. (The `RESEND_API_KEY` env var also works for CI.)
 
-Prefer to skip for now? Press Enter at the channel prompt - you can re-run `npm run setup`
-any time to add or change channels. (You can also toggle channels later on the dashboard's
-**Settings** page.)
+Skip any of this for now and come back whenever - channels are just Settings fields.
 
 ## 4. Onboard your org
 
-```bash
-npm run onboard
-```
-
-Answer ~6 questions about your org (mission, entity/stage, what to fund, what to avoid,
-example grants). Claude compiles them into your **profile** - the "voice" every agent uses.
-It prints a preview of the exact prompt the agents will read. Re-run anytime, or edit it
-later in the dashboard.
+Happens **automatically in the browser** the first time you open the app: answer ~6
+questions about your org (mission, entity/stage, what to fund, what to avoid, example
+grants) - or paste your website and let the AI draft the answers for you to edit. Claude
+compiles them into your **profile** - the "voice" every agent uses. Edit it any time under
+**Profile**. (Terminal fans: `npm run onboard` is the same interview in the CLI.)
 
 **The "what to avoid" answer matters as much as "what to fund."** Whatever you list here
 becomes the agents' do-not-surface list (stored as `anti_patterns` + `eligibility_constraints`
@@ -181,16 +152,20 @@ same list automatically.
 
 ## 5. Run it
 
-Everything runs from your own machine - no GitHub or hosting required:
+Everything runs from your own machine - no GitHub or hosting required. With the app open
+(`npm run dev`), hit **Run discovery now** on the board or the Runs page; it confirms the
+spend, kicks off the agents, and results land on the board as they're found.
+
+Terminal equivalents, if you prefer them:
 
 ```bash
-npm run dev        # open the dashboard at http://localhost:3000
 npm run discover   # find new grants now
 npm run jobs       # process draft requests + send deadline reminders
 ```
 
-Run `discover` / `jobs` whenever you want fresh results. That's a complete, working
-setup. The next two steps are **optional** - they just make it hands-off.
+That's a complete, working setup. The next two steps are **optional** - they just make it
+hands-off. And when fixes ship to the app itself, **Settings → Updates → Update now** pulls
+them straight from GitHub (git installs only).
 
 ## 6. (Optional) Run discovery on a schedule
 

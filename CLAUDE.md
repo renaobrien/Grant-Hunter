@@ -37,3 +37,32 @@ is a different git repo. Slack-message / digest / droplet work belongs there.
 - `docs/dashboard-preview.html` - committed static design reference.
 
 Verify UI changes with `npm run build` (and `npm run dev`) from this repo.
+
+## First-run + in-app operations (browser-first, added 2026-07-09)
+
+The product is browser-first; the CLI is an alternative, not a prerequisite.
+
+- `app/connect/` - first-run wizard. Middleware redirects EVERYTHING here when
+  Supabase env is missing (see the env check at the top of `middleware.ts`;
+  `connect` is matcher-excluded). Verifies submitted creds, writes `.env.local`
+  via `lib/env-file.ts`, and serves the combined `supabase/migrations/*.sql`
+  for a paste-into-SQL-editor schema step. Never renders on configured or
+  REQUIRE_LOGIN instances; on Vercel with env missing it shows host-env
+  instructions instead of a form.
+- `lib/env-file.ts` - shared `.env.local` IO + `deriveProjectUrl()` (bare ref /
+  URL / dashboard URL). Used by `scripts/setup.ts` (relative import) and the
+  /connect action. Node-only.
+- `app/runs/actions.ts` `startDiscovery()` - spawns
+  `npx tsx engine/run-discovery.ts --manual` detached; guarded on Vercel, on a
+  missing Anthropic key, and while a run is already `running`.
+  `components/RunDiscoveryButton.tsx` mounts on the board (searched column
+  empty state) and the Runs page.
+- Settings: Anthropic key + channel secrets (webhook URLs, Telegram bot token,
+  Resend key) are WRITE-ONLY - the client only ever receives presence booleans
+  (`ChannelView` in `app/settings/page.tsx`). `upsertChannel` merges: blank
+  secret = keep stored. `engine/notify.ts` reads channel secrets config-first,
+  env fallback. Settings -> Updates card (`UpdatePanel.tsx`) runs
+  `git pull --ff-only` via `checkForUpdates`/`applyUpdate` (local git checkouts
+  only).
+- Header brand is `{org_name} Grant Hunter` once a profile exists
+  (`app/layout.tsx`).
