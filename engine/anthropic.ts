@@ -181,17 +181,30 @@ export function estimateCostCents(
 
 /**
  * Parse JSON from a Claude text response. Handles markdown fences, prose wrapping,
- * and truncation salvage. Ported verbatim from the proven cultivator-map helper.
+ * and truncation salvage.
+ *
+ * `prefer` says which top-level shape to extract: agents that return a list use
+ * "array" (default); the profile compiler returns a single object that itself
+ * contains arrays, so it passes "object" - otherwise the first inner array gets
+ * mis-extracted and parsing fails.
  */
-export function parseJsonFromResponse(text: string, stopReason: string): unknown {
+export function parseJsonFromResponse(
+  text: string,
+  stopReason: string,
+  prefer: "array" | "object" = "array",
+): unknown {
   let cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
   const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-  if (arrayMatch) {
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (prefer === "object" && objMatch) {
+    cleaned = objMatch[0];
+  } else if (prefer === "array" && arrayMatch) {
     cleaned = arrayMatch[0];
-  } else {
-    const objMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (objMatch) cleaned = objMatch[0];
+  } else if (objMatch) {
+    cleaned = objMatch[0];
+  } else if (arrayMatch) {
+    cleaned = arrayMatch[0];
   }
 
   try {

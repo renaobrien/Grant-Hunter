@@ -2,6 +2,7 @@
 // the CLI (`npm run onboard`) and the web onboarding server action so both
 // produce an identical, agent-ready profile.
 import { callClaude, MODELS, parseJsonFromResponse } from "./anthropic";
+import { fetchSiteText } from "./prefill-from-url";
 import { ONBOARDING_QUESTIONS } from "./onboarding-questions";
 import type { Profile } from "./types";
 
@@ -41,12 +42,24 @@ export async function compileProfile(
   apiKey: string,
 ): Promise<Profile> {
   const url = answers.url?.trim();
+  // Optionally fold in the site's text (fetched fast, no agentic web search) so
+  // the compiler can fill gaps the answers left. Non-fatal if the site can't be
+  // read - we just compile from the answers.
+  let siteContext = "";
+  if (url) {
+    try {
+      siteContext = `Org website text - use to fill gaps, never override their answers:\n${await fetchSiteText(url)}`;
+    } catch {
+      // site unreadable; proceed with answers only
+    }
+  }
+
   const userMessage = [
     "Compile these onboarding answers into the profile JSON:",
     ...ONBOARDING_QUESTIONS.map(
       (q) => `${q.label}\nANSWER: ${answers[q.key]?.trim() || "(skipped)"}`,
     ),
-    url ? `If useful, consult the org's site (${url}) to fill gaps.` : "",
+    siteContext,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -57,10 +70,11 @@ export async function compileProfile(
     userMessage,
     model: MODELS.opus,
     maxTokens: 4000,
-    webSearchMaxUses: url ? 3 : undefined,
   });
 
-  const c = parseJsonFromResponse(res.text, res.stopReason) as Partial<Profile> & {
+  // Expect a single profile OBJECT (which itself contains arrays), so parse
+  // object-first - otherwise the first inner array gets mis-extracted.
+  const c = parseJsonFromResponse(res.text, res.stopReason, "object") as Partial<Profile> & {
     org_name?: string;
   };
 

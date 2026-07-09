@@ -35,7 +35,7 @@ function htmlToText(html: string): string {
 }
 
 /** Fetch a URL and return its visible text, bounded in time and size. */
-async function fetchSiteText(url: string): Promise<string> {
+export async function fetchSiteText(url: string): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
@@ -95,7 +95,7 @@ export async function draftAnswersFromUrl(
     maxTokens: 1500,
   });
 
-  const parsed = parseJsonFromResponse(res.text, res.stopReason) as Record<
+  const parsed = parseJsonFromResponse(res.text, res.stopReason, "object") as Record<
     string,
     unknown
   >;
