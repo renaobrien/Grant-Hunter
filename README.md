@@ -10,6 +10,8 @@
 
 This is the open-source, productized successor to a single-org grant bot. It reuses a grant-research engine already proven in production and strips out everything org-specific so **any** org can run their own instance.
 
+![The pipeline board: grants flowing through Searched, Active, Pending, and Closed columns, each card showing fit and alignment scores](docs/screenshots/board.png)
+
 ## How you run it
 
 Each organization runs its own private copy. You clone the
@@ -59,6 +61,36 @@ Want it always online instead of on your laptop, so sign-in works from your phon
 grants get found even when your computer is off? Host it in ~15 minutes on Vercel (free
 tier): **[DEPLOY.md](DEPLOY.md)**. You paste the Supabase values into the host's UI, so
 there's no `npm run setup` and no `.env.local` at all.
+
+## What it looks like
+
+Everything below is the stock UI with the built-in demo data (`npm run seed:demo`) and a
+fictional org profile - your instance shows your own name and brand colors instead.
+
+**Grant detail - every grant carries its adjudication debate.** The Finder's claim, the
+Skeptic's attempt to kill it, and the Judge's ruling are all on the record:
+
+![Grant detail page showing the ethos alignment banner, the assessment table, and the expanded Finder / Skeptic / Judge debate transcript](docs/screenshots/grant-detail.png)
+
+**Application drafts - the Drafter ⇄ Critic loop.** Drafts aren't accepted until the
+Critic signs off, and the critique rounds stay attached:
+
+![Application drafts panel with a ready draft and the two-round critique transcript: round 1 marked revise with issues, round 2 approved](docs/screenshots/draft.png)
+
+**Runs - every agent invocation, costed.** Tokens, duration, and dollars per step, plus
+the candidates that were cut before reaching the board and why:
+
+![Runs page showing a grouped discovery run with per-agent cost, and a recently cut candidate with the Skeptic's kill-shot reasoning](docs/screenshots/runs.png)
+
+**Settings - keys, budget, cadence, and channels**, all in the browser. The Anthropic key
+and channel secrets are write-only; the daily budget cap is a hard stop:
+
+![Settings page with the API key card, discovery and budget controls, and the weekly run schedule](docs/screenshots/settings.png)
+
+**Org profile - the white-label core.** Every field feeds the compiled prompt the agents
+speak in; swap this record and the same code works for a different organization:
+
+![Organization profile form with identity and mission fields and the current-state section](docs/screenshots/profile.png)
 
 ## What it costs to run
 
