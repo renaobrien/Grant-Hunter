@@ -2,7 +2,7 @@
 
 **A white-label, self-hosted grant discovery + application assistant.** Clone it, run one setup command, fill in your org profile, and you get:
 
-- A **dashboard** pipeline board (Searched / Active / Pending / Closed) with the full agent debate transcript on every grant.
+- A **dashboard** pipeline board (Searched / Working on / Submitted / Closed) with the full agent debate transcript on every grant.
 - **Adversarial agents** that discover grants (Finder → Skeptic → Judge) and draft applications (Drafter ⇄ Critic) - agents that argue *against* each other so weak matches get killed before they reach you.
 - A **teaching loop** - rate suggestions by number *and* freeform text; future runs learn from it.
 - Digests, deadline reminders, and draft-ready alerts to the **channel of your choice** - Slack, Discord, Telegram, or email (pick any, or several).
