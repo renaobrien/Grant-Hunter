@@ -8,8 +8,8 @@ import FeedbackButton from "@/components/FeedbackButton";
 import ConsoleCapture from "@/components/ConsoleCapture";
 import ThemeToggle from "@/components/ThemeToggle";
 
-// Applies the stored theme before first paint so dark mode doesn't flash
-// light. No stored choice = follow the OS (handled in CSS).
+// Applies the stored theme before first paint so a chosen dark mode doesn't
+// flash light. No stored choice = light (the CSS default; the OS is ignored).
 const THEME_SCRIPT = `try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}`;
 
 export const dynamic = "force-dynamic";

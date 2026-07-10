@@ -125,32 +125,9 @@ html[data-theme="dark"] {
   --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme="light"]) {
-    --page-bg: #15161a;
-    --border-strong: #4a4e58;
-    --ink: #e8e8ec;
-    --ink-soft: #b3b6c0;
-    --ink-faint: #8b8f9a;
-    --line: #35383f;
-    --line-soft: #2a2c33;
-    --surface: #1e2026;
-    --surface-2: #24262d;
-    --tone-info: #7aa5f2;
-    --tone-info-bg: #1c2740;
-    --tone-good: #43c093;
-    --tone-good-bg: #17352b;
-    --tone-warn: #f2914f;
-    --tone-warn-bg: #3d2717;
-    --tone-bad: #e57263;
-    --tone-bad-bg: #3e201b;
-    --tone-muted: #9aa0ab;
-    --tone-muted-bg: #2b2d34;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.35);
-    --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.4);
-    color-scheme: dark;
-  }
-}
+/* Light is the default. Dark is opt-in only, via the nav toggle
+   (html[data-theme="dark"]) - we intentionally do NOT auto-follow a dark OS
+   setting, so a fresh visit always lands on light. */
 
 /* ---- reset ---- */
 *,

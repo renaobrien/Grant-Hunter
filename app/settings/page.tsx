@@ -22,32 +22,6 @@ export const dynamic = "force-dynamic";
 
 const DEFAULT_CRON = "0 12 * * 1";
 
-// Best-effort human-readable summary of a "min hour dom mon dow" cron string.
-// Returns null when the shape isn't one of the simple daily/weekly patterns.
-function describeCron(cron: string): string | null {
-  const parts = cron.trim().split(/\s+/);
-  if (parts.length !== 5) return null;
-  const [min, hour, dom, mon, dow] = parts;
-  if (dom !== "*" || mon !== "*") return null;
-  const h = Number(hour);
-  const m = Number(min);
-  if (!Number.isInteger(h) || !Number.isInteger(m)) return null;
-  const time = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} UTC`;
-  if (dow === "*") return `Daily at ${time}`;
-  const days = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
-  const d = Number(dow);
-  if (Number.isInteger(d) && d >= 0 && d <= 6) return `${days[d]}s at ${time}`;
-  return null;
-}
-
 export default async function SettingsPage() {
   const supabase = await createClient();
   const signInDismissed =
@@ -98,7 +72,6 @@ export default async function SettingsPage() {
   const hasAnthropicKey = keySource !== null;
 
   const cron = settings?.weekly_cron ?? DEFAULT_CRON;
-  const cronHuman = describeCron(cron);
 
   // Exactly what the agents read on every run - shown read-only so the operator
   // can see what's been learned (and knows what to correct via ratings / the
@@ -168,11 +141,12 @@ export default async function SettingsPage() {
       </Card>
 
       <Card>
-        <h2>What your agents currently understand</h2>
+        <h2>Guidance your agents follow</h2>
         <p className="muted">
-          The exact guidance injected into every agent, built from your ratings
-          and board activity. Rate more grants, or edit the preference summary
-          above, to change it.
+          This is the exact text the agents read before every run: who you are
+          and what you want, assembled from the grants you&rsquo;ve rated and
+          tracked. To change it, rate more grants or edit the preference summary
+          above.
         </p>
         <pre className="voice-preview">{agentContext}</pre>
       </Card>
@@ -180,16 +154,8 @@ export default async function SettingsPage() {
       <Card>
         <h2>Weekly run schedule</h2>
         <p className="muted">
-          {cronHuman ? (
-            <>
-              Currently: <strong>{cronHuman}</strong>.
-            </>
-          ) : (
-            <>
-              Current cron: <code>{cron}</code>.
-            </>
-          )}{" "}
-          The Run button works anytime regardless.
+          Pick when automatic runs happen, in your local time. The Run button
+          works anytime regardless.
         </p>
         <ScheduleForm
           initialCron={cron}

@@ -1,8 +1,8 @@
 "use client";
 
-// Sun/moon toggle in the nav. Follows the OS theme until the user picks one;
-// the choice persists in localStorage and is applied pre-paint by the inline
-// script in app/layout.tsx (data-theme on <html>).
+// Sun/moon toggle in the nav. Defaults to light; dark is opt-in and persists in
+// localStorage, applied pre-paint by the inline script in app/layout.tsx
+// (data-theme on <html>). The OS setting is intentionally ignored.
 import { useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
@@ -10,9 +10,8 @@ type Theme = "light" | "dark";
 function effectiveTheme(): Theme {
   const explicit = document.documentElement.dataset.theme;
   if (explicit === "light" || explicit === "dark") return explicit;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  // No stored choice = light, matching the CSS default.
+  return "light";
 }
 
 export default function ThemeToggle() {

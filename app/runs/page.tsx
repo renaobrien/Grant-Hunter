@@ -10,6 +10,7 @@ import LocalTime from "@/components/LocalTime";
 import Elapsed from "@/components/Elapsed";
 import BoardAutoRefresh from "@/components/BoardAutoRefresh";
 import RunLog from "@/components/RunLog";
+import SpendSummary from "@/components/SpendSummary";
 import { sweepStaleRuns, tailLog } from "@/lib/run-control";
 import type { AgentRunRow, AgentRunStatus, DebateRow } from "@/lib/types";
 
@@ -124,6 +125,8 @@ export default async function RunsPage() {
       <div className="page-head">
         <h1>Runs</h1>
       </div>
+
+      <SpendSummary />
 
       <Card className="note-panel">
         <h3>Run discovery now</h3>
