@@ -83,7 +83,12 @@ export default function ApiKeysForm({
           <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
             console.anthropic.com
           </a>
-          .
+          . Strongly recommended: set a monthly usage limit on the key at{" "}
+          <a href="https://console.anthropic.com/settings/limits" target="_blank" rel="noreferrer">
+            console.anthropic.com/settings/limits
+          </a>{" "}
+          too. That ceiling is enforced by Anthropic itself, so your bill stays
+          capped even if this app misbehaves.
         </span>
       </div>
 

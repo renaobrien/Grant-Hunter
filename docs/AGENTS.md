@@ -15,6 +15,15 @@ fails without usage data is billed a conservative worst-case floor, so
 timeouts and network errors count against the caps instead of slipping past
 them.
 
+Set a third ceiling outside the app: a **monthly usage limit on your API key**
+at [console.anthropic.com/settings/limits](https://console.anthropic.com/settings/limits).
+Anthropic enforces that one, so your bill stays capped even if the app
+misbehaves.
+
+Want cheaper runs without touching code? Switch **Settings, Discovery speed**
+to **Fast**: the Skeptic drops from Opus to Sonnet and both searchers use
+smaller search budgets, roughly halving the cost of a run.
+
 Costs below are estimates at Anthropic list price. Per-run figures assume the
 default 2 rounds; a run that stops early costs less.
 

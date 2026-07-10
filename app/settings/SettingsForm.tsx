@@ -181,7 +181,7 @@ export default function SettingsForm({
             checked={speed === "thorough"}
             onChange={() => setSpeed("thorough")}
           />
-          Thorough - strongest vetting, slower and pricier
+          Thorough - strongest vetting (Opus fact-checker), roughly $1-2 per run
         </label>
         <label className="row" style={{ gap: "var(--s2)", fontWeight: 400 }}>
           <input
@@ -191,7 +191,7 @@ export default function SettingsForm({
             checked={speed === "fast"}
             onChange={() => setSpeed("fast")}
           />
-          Fast - quicker and cheaper, lighter fact-checking
+          Fast - about half the cost (Sonnet fact-checker, fewer searches)
         </label>
       </div>
 

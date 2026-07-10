@@ -49,6 +49,11 @@ export default async function SpendSummary() {
   const today = s ? s.today_cents : todayCents;
   const budgetCents = budgetUsd == null ? null : Math.round(budgetUsd * 100);
   const overToday = budgetCents != null && today != null && today > budgetCents;
+  // Discovery refuses to start a call whose worst case doesn't fit in what's
+  // left of the day, so "nothing happens when I press Start" near the cap
+  // needs explaining, not just a red number.
+  const nearCap =
+    budgetCents != null && today != null && today >= budgetCents * 0.75;
 
   const stats: { label: string; value: string; tone?: string }[] = [
     {
@@ -84,6 +89,15 @@ export default async function SpendSummary() {
           </div>
         ))}
       </div>
+      {nearCap ? (
+        <p className="muted" style={{ margin: "var(--s3) 0 0", fontSize: "0.85rem" }}>
+          {overToday || today === budgetCents
+            ? "Daily budget reached: discovery is paused until tomorrow."
+            : "Close to today's budget: discovery pauses once a run no longer fits in what's left."}{" "}
+          Raise the daily budget under Settings, Discovery &amp; budget if you
+          want to keep going today.
+        </p>
+      ) : null}
       {needsUpdate ? (
         <p className="muted" style={{ margin: "var(--s3) 0 0", fontSize: "0.85rem" }}>
           Run the latest update (Settings -&gt; Updates) to unlock the 7-day,

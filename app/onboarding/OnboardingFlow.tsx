@@ -283,7 +283,9 @@ export default function OnboardingFlow({
               />
               <span className="field-hint">
                 Your agents use this to search and write. Stored in your own
-                database, never shown back. Get one at console.anthropic.com.
+                database, never shown back. Get one at console.anthropic.com,
+                and set a monthly usage limit on it there (Settings, Limits) so
+                Anthropic caps your bill no matter what.
               </span>
             </div>
           ) : null}

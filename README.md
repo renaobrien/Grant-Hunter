@@ -100,7 +100,7 @@ your Anthropic usage**:
 
 | Service | What it's for | Cost |
 |---|---|---|
-| **Anthropic API** | The agents' Claude calls (the actual work) - Opus for the adversaries/drafter, Sonnet for search, plus web search | Pay-as-you-go. A weekly discovery run is typically **a few dollars/month**. A hard **daily budget cap** (`settings.daily_budget_usd`, default $5) stops runs before they overspend. |
+| **Anthropic API** | The agents' Claude calls (the actual work) - Opus for the adversaries/drafter, Sonnet for search, plus web search | Pay-as-you-go. A weekly discovery run is typically **a few dollars/month**. Three ceilings keep it there: a **per-run budget** (default $2) and a **daily budget cap** (default $5), both under Settings, plus the **monthly usage limit** you should set on the key at [console.anthropic.com/settings/limits](https://console.anthropic.com/settings/limits) - that one is enforced by Anthropic itself, so your bill stays capped even if the app misbehaves. |
 | **Supabase** | Postgres database + magic-link auth | **Free tier** covers this comfortably (2 free projects per org). A dedicated **paid project is ~$10/mo** if you're past the free tier or want it isolated. |
 | **Vercel** | *(optional)* hosts the dashboard so it's reachable beyond `localhost` | **Free** (Hobby tier). |
 | **GitHub Actions** | *(optional)* runs discovery + the jobs worker on a schedule - no server to keep alive | **Free** tier minutes cover it easily. |
