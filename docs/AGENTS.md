@@ -45,5 +45,5 @@ turn. Their search budgets are deliberately small, and each call carries a
 hard 6-minute request timeout plus an abort tied to the run's 40-minute wall
 clock.
 
-The same table backs the "i" info button on the Runs page
-(`lib/agent-info.ts`).
+The same table lives in the app under Settings, Your agents, "Models and
+costs" (`lib/agent-info.ts`).

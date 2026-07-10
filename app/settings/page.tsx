@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { authDisabled, createClient } from "@/lib/supabase/server";
 import { getPreferenceContext } from "@/engine/preference-context";
 import { Card } from "@/components/ui";
+import AgentInfo from "@/components/AgentInfo";
 import SignInNotice from "@/components/SignInNotice";
 import type {
   NotificationChannel,
@@ -155,6 +156,7 @@ export default async function SettingsPage() {
           all read the guidance you set above, plus what they learn from the
           grants you rate.
         </p>
+        <AgentInfo />
         <details>
           <summary style={{ cursor: "pointer" }}>
             See the exact guidance they read

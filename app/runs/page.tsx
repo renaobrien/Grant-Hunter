@@ -10,7 +10,6 @@ import Elapsed from "@/components/Elapsed";
 import BoardAutoRefresh from "@/components/BoardAutoRefresh";
 import RunLog from "@/components/RunLog";
 import SpendSummary from "@/components/SpendSummary";
-import AgentInfo from "@/components/AgentInfo";
 import { AGENT_INFO } from "@/lib/agent-info";
 import { sweepStaleRuns, tailLog } from "@/lib/run-control";
 import type { AgentRunRow, DebateRow } from "@/lib/types";
@@ -185,7 +184,6 @@ export default async function RunsPage() {
       <BoardAutoRefresh active={hasRunning} />
       <div className="page-head">
         <h1>Runs</h1>
-        <AgentInfo />
       </div>
 
       <SpendSummary />

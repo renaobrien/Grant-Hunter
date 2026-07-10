@@ -10,7 +10,8 @@ import { closeSync, existsSync, openSync, writeSync } from "node:fs";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@/lib/supabase/server";
-import { resolveAnthropicKey } from "@/engine/db";
+import { budgetRemainingCents, loadSettings, resolveAnthropicKey } from "@/engine/db";
+import { finderWorstCaseCents } from "@/engine/agents/finder";
 import {
   ensureRunDir,
   killRun,
@@ -42,6 +43,29 @@ export async function startDiscovery(): Promise<StartDiscoveryResult> {
     await resolveAnthropicKey(supabase);
   } catch (e) {
     return { ok: false, error: (e as Error).message };
+  }
+
+  // The engine refuses to start a call whose worst case doesn't fit in the
+  // day's remaining budget. Do the same check here so the button explains the
+  // refusal, instead of spawning a run that exits in a second with no rows -
+  // to the user that reads as "the button does nothing".
+  try {
+    const settings = await loadSettings(supabase);
+    const remaining = await budgetRemainingCents(supabase, settings.daily_budget_usd);
+    const worst = finderWorstCaseCents(settings.speed_mode === "fast");
+    if (remaining < worst) {
+      const spent = Math.round(settings.daily_budget_usd * 100) - remaining;
+      return {
+        ok: false,
+        error:
+          `Today's $${settings.daily_budget_usd} daily budget is nearly spent ` +
+          `($${(spent / 100).toFixed(2)} used). A run needs ~$${(worst / 100).toFixed(2)} of ` +
+          `headroom before it can start safely. Raise the daily budget under ` +
+          `Settings, Discovery & budget - or try again tomorrow.`,
+      };
+    }
+  } catch {
+    // Best-effort: if the check itself fails, the engine still enforces the cap.
   }
 
   // Clear rows stuck in 'running' from a crashed process before checking the
