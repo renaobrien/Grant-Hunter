@@ -82,8 +82,8 @@ and what it costs: [docs/AGENTS.md](docs/AGENTS.md).
 
 ![Runs page showing a grouped discovery run with per-agent cost, and a recently cut candidate with the Skeptic's kill-shot reasoning](docs/screenshots/runs.png)
 
-**Settings - keys, budget, cadence, and channels**, all in the browser. The Anthropic key
-and channel secrets are write-only; the daily budget cap is a hard stop:
+**Settings - keys, budgets, cadence, and channels**, all in the browser. The Anthropic key
+and channel secrets are write-only; the per-run and daily budget caps are hard stops:
 
 ![Settings page with the API key card, discovery and budget controls, and the weekly run schedule](docs/screenshots/settings.png)
 
@@ -153,10 +153,30 @@ Everything the agents know about your org lives in one **profile** record you fi
 
 ## Safety
 
-A per-instance **daily budget cap** (`settings.daily_budget_usd`) is enforced in code:
-discovery checks remaining budget before it starts *and* again before every round
-(`engine/discovery.ts`), and drafting checks before each Drafter/Critic round
-(`engine/draft.ts`). Every agent call is recorded in `agent_runs` with tokens and cost -
-that ledger is what the cap reads. Grant links are fetched and verified before a grant
-reaches your board, so dead 404 pages get cut. Since you use your own API key, a runaway
-only ever touches your own bill - and the cap stops it first.
+Spend is bounded at three levels, all enforced in code (`engine/discovery.ts`,
+`engine/anthropic.ts`):
+
+- **Per run** (`settings.run_budget_usd`, default $2): a run stops starting new debate
+  rounds once its spend reaches this. A started round always finishes, so paid-for
+  searches become judged results instead of waste.
+- **Per day** (`settings.daily_budget_usd`, default $5): before every Finder/Skeptic
+  call, discovery checks that a *worst-case* call still fits in what's left of the day -
+  not just that the budget isn't already spent. Drafting checks before each
+  Drafter/Critic round (`engine/draft.ts`).
+- **Per month**: the usage limit you set on your own key at
+  [console.anthropic.com/settings/limits](https://console.anthropic.com/settings/limits),
+  enforced by Anthropic itself.
+
+The ledger the caps read can't be fooled by failures: every agent call is recorded in
+`agent_runs` with tokens, web searches, and cost, and a call that dies without usage data
+(timeout, network, 5xx) is billed a conservative worst-case floor instead of nothing.
+Individual API calls are bounded too - small web-search budgets, a 6-minute request
+timeout, one retry, and an abort signal tied to the run's 40-minute wall clock. Grant
+links are fetched and verified before a grant reaches your board, so dead 404 pages get
+cut. Since you use your own API key, a runaway only ever touches your own bill - and the
+caps stop it first. Per-agent models and costs: [docs/AGENTS.md](docs/AGENTS.md).
+
+## Roadmap
+
+What's next, in priority order - cost-per-survivor metrics, persisted cull memory, run
+summaries where you look, ledger reconciliation, and more: [docs/ROADMAP.md](docs/ROADMAP.md).

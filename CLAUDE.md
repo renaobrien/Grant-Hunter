@@ -54,7 +54,9 @@ The product is browser-first; the CLI is an alternative, not a prerequisite.
   /connect action. Node-only.
 - `app/runs/actions.ts` `startDiscovery()` - spawns
   `npx tsx engine/run-discovery.ts --manual` detached; guarded on Vercel, on a
-  missing Anthropic key, and while a run is already `running`.
+  missing Anthropic key, while a run is already `running`, and when the daily
+  budget lacks headroom for a worst-case finder call (returns a plain-language
+  message instead of spawning a doomed run).
   `components/RunDiscoveryButton.tsx` mounts on the board (searched column
   empty state) and the Runs page.
 - Settings: Anthropic key + channel secrets (webhook URLs, Telegram bot token,
@@ -66,3 +68,19 @@ The product is browser-first; the CLI is an alternative, not a prerequisite.
   only).
 - Header brand is `{org_name} Grant Hunter` once a profile exists
   (`app/layout.tsx`).
+
+## Cost control (reworked 2026-07-10 - read before touching engine spend paths)
+
+Three ceilings: per-run (`settings.run_budget_usd`, default $2, gates NEW
+rounds only - a started round always finishes so its spend becomes judged
+results), per-day (`settings.daily_budget_usd` - worst-case pre-flight via
+`worstCaseCents()` in `engine/anthropic.ts` before each Finder/Skeptic call),
+and the monthly key limit users set in the Anthropic console. The `agent_runs`
+ledger must OVER-count on failure, never skip: a call that dies without usage
+data is billed a worst-case floor (`finishRun` `floorCents` in `engine/db.ts`),
+because null-cost errors are how $16.50 once slipped past a $5 cap. Calls are
+bounded (maxRetries 1, 6-min timeout, 2 continuations, small search budgets,
+AbortSignal run deadline). The Finder self-scores fit and `discovery.ts` culls
+below-floor candidates in code before the Opus Skeptic sees them. Per-agent
+models/costs table: `docs/AGENTS.md` + `lib/agent-info.ts` (keep both in sync).
+Roadmap: `docs/ROADMAP.md`.

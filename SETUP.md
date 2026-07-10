@@ -203,9 +203,19 @@ Supabase (free tier, or ~$10/mo dedicated), Vercel + GitHub Actions (free), opti
 Resend/Slack/Discord/Telegram (free) - plus your **Anthropic usage**, typically a few
 dollars/month for a weekly run.
 
-You pay only your own Anthropic bill. A hard **daily budget cap** (`settings.daily_budget_usd`,
-default $5) is checked at the start of every discovery run and again before each round - if
-it's spent, the run stops and logs why, so a misconfiguration can't drain your account. Every
-agent call is recorded in `agent_runs` with tokens, web searches, and estimated cost (rounded
-up), visible on the dashboard's Runs page. Tip: for your very first run, set
-`daily_budget_usd = 2` and `discovery_rounds = 1` in the `settings` table.
+You pay only your own Anthropic bill, and three ceilings keep it bounded:
+
+- **Per run** (default $2) and **per day** (default $5) budgets, both editable under
+  **Settings → Discovery & budget**. Before each agent call, discovery checks that a
+  worst-case call still fits - a run that would overspend stops and tells you why,
+  right on the Start button.
+- A **monthly usage limit** on your key at
+  [console.anthropic.com/settings/limits](https://console.anthropic.com/settings/limits).
+  Set this one - Anthropic enforces it, so your bill stays capped even if the app
+  misbehaves.
+
+Every agent call is recorded in `agent_runs` with tokens, web searches, and estimated cost
+(rounded up; failures are billed a worst-case floor so nothing slips past the caps),
+visible on the dashboard's Runs page. What each agent runs on and costs:
+[docs/AGENTS.md](docs/AGENTS.md). Tip: for your very first run, the defaults are already
+safe - or set the per-run budget to $1 for an extra-cautious first spin.
