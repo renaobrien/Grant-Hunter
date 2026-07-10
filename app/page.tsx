@@ -29,6 +29,8 @@ type CardGrant = Pick<
   | "fit_score"
   | "alignment_score"
   | "recommendation"
+  | "confidence"
+  | "blockers"
   | "status"
   | "last_verified"
   | "human_score"
@@ -61,7 +63,7 @@ export default async function BoardPage() {
   const { data, error } = await supabase
     .from("grants")
     .select(
-      "id, funder, program_name, amount, deadline, fit_score, alignment_score, recommendation, status, last_verified, human_score",
+      "id, funder, program_name, amount, deadline, fit_score, alignment_score, recommendation, confidence, blockers, status, last_verified, human_score",
     )
     .order("fit_score", { ascending: false, nullsFirst: false })
     .order("date_added", { ascending: false });
@@ -221,6 +223,11 @@ export default async function BoardPage() {
                               label={REC_LABEL[g.recommendation]}
                               tone={REC_TONE[g.recommendation]}
                             />
+                          ) : null}
+                          {g.confidence === "low" || (g.blockers ?? "").trim() ? (
+                            <span title={(g.blockers ?? "").trim() || "The agents flagged this as low confidence - check the details before investing time."}>
+                              <Chip label="Verify first" tone="warn" />
+                            </span>
                           ) : null}
                         </div>
 

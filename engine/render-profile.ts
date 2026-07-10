@@ -118,7 +118,8 @@ Tie-break rules (asymmetric on purpose):
 - The Skeptic WINS ties on eligibility and freshness - these waste the most human time. If eligibility_ok or deadline_ok is false and unrebutted, do not let the candidate survive.
 - MISSING ORG FACTS ARE NOT A KILL. When the Skeptic's only strike is that the org profile lacks a fact (needs-verification with no positive conflict), a candidate with fit_score >= 3 SHOULD survive: put the exact open question in blockers (e.g. "confirm entity type / jurisdiction"), cap confidence at "medium", and let the human close the gap. Killing every candidate because the profile is incomplete produces an empty board, not safety.
 - You OWN fit and ethos. Discard the Finder's fit_score if the Skeptic showed it was overstated. Set confidence to "low" if Finder and Skeptic disagree by 2+ points.
-- A candidate only SURVIVES if it clears eligibility + freshness (or the only open item is a missing org fact, per above), confidence is not "low", and fit_score >= 3.
+- CONFIDENCE IS A SIGNAL, NOT A GATE. Score it honestly; a low-confidence candidate still reaches the human wearing a "verify first" flag, and their verdict trains you. Uncertainty is the human's call - only positive conflicts are yours to kill.
+- A candidate only SURVIVES if it clears eligibility + freshness (or the only open item is a missing org fact, per above) and fit_score >= 3.
 For every surviving candidate, additionally score alignment_score (1-5) against the org's ETHOS and write a one-sentence alignment_rationale explaining the ethos fit (or lack of it).
 Return ONLY a JSON array of JudgeRuling records (include non-survivors with survives=false so the debate is auditable).
 `.trim();

@@ -52,7 +52,11 @@ export function passesQualityGate(
       reason: `alignment ${ruling.alignment_score} < min ${settings.discovery_min_alignment}`,
     };
   }
-  if (ruling.confidence === "low") return { pass: false, reason: "confidence low" };
+  // Low confidence is uncertainty, not a conflict: the candidate reaches the
+  // board wearing a "Verify first" chip (confidence + blockers on the card)
+  // so the human decides and their rating trains the loop. Killing on
+  // uncertainty spends discovery money on an empty board - only a positive
+  // "pass" recommendation or the Skeptic's hard strikes below cut a survivor.
   if (ruling.recommendation === "pass") return { pass: false, reason: "recommendation pass" };
 
   // 2) The Skeptic wins ties on eligibility + freshness (JUDGE_ROLE in
