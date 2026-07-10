@@ -18,6 +18,7 @@ import {
   pidFile,
   readPid,
   sweepStaleRuns,
+  tailLog,
 } from "@/lib/run-control";
 
 export type StartDiscoveryResult = { ok: true } | { ok: false; error: string };
@@ -137,4 +138,27 @@ export async function stopDiscovery(): Promise<StopDiscoveryResult> {
     return { ok: true, note: "Nothing was running." };
   }
   return { ok: true };
+}
+
+export type RunLogResult = { log: string | null; running: boolean };
+
+// Polled by the live log panel so a run isn't a black box. Returns the tail of
+// the run log plus whether anything is still running, so the panel knows when to
+// stop polling and refresh the rest of the page.
+export async function getRunLog(): Promise<RunLogResult> {
+  if (process.env.VERCEL) return { log: null, running: false };
+  let running = false;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("agent_runs")
+      .select("id")
+      .eq("status", "running")
+      .limit(1)
+      .maybeSingle();
+    running = !!data;
+  } catch {
+    // If the status check fails, still return the log we have.
+  }
+  return { log: tailLog(80), running };
 }

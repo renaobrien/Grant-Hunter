@@ -1,7 +1,15 @@
 // Server-only helpers for the in-process discovery run: pidfile + log paths,
 // liveness checks, and a sweep that clears agent_runs rows stuck in 'running'
 // after a crash (a stuck row would otherwise block the start button forever).
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -79,12 +87,28 @@ export function killRun(): void {
 }
 
 // Last N lines of the run log, so the Runs page can show what the run is
-// actually doing (its output goes to a file, not the dev-server terminal).
+// actually doing (its output goes to a file, not the dev-server terminal). Reads
+// only the tail of the file, since it's appended to across every run.
 export function tailLog(maxLines = 40): string | null {
+  const READ_BYTES = 64 * 1024;
   try {
-    const text = readFileSync(logFile(), "utf8").trimEnd();
+    const path = logFile();
+    const { size } = statSync(path);
+    if (!size) return null;
+    const from = Math.max(0, size - READ_BYTES);
+    const len = size - from;
+    const buf = Buffer.alloc(len);
+    const fd = openSync(path, "r");
+    try {
+      readSync(fd, buf, 0, len, from);
+    } finally {
+      closeSync(fd);
+    }
+    const text = buf.toString("utf8").trimEnd();
     if (!text) return null;
-    const lines = text.split("\n");
+    let lines = text.split("\n");
+    // If we didn't start at byte 0, the first line is probably partial - drop it.
+    if (from > 0 && lines.length > 1) lines = lines.slice(1);
     return lines.slice(-maxLines).join("\n");
   } catch {
     return null;

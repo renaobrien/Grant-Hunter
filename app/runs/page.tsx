@@ -9,6 +9,7 @@ import StopDiscoveryButton from "@/components/StopDiscoveryButton";
 import LocalTime from "@/components/LocalTime";
 import Elapsed from "@/components/Elapsed";
 import BoardAutoRefresh from "@/components/BoardAutoRefresh";
+import RunLog from "@/components/RunLog";
 import { sweepStaleRuns, tailLog } from "@/lib/run-control";
 import type { AgentRunRow, AgentRunStatus, DebateRow } from "@/lib/types";
 
@@ -162,24 +163,8 @@ export default async function RunsPage() {
         )}
       </Card>
 
-      {logTail ? (
-        <Card className="note-panel">
-          <details open={hasRunning}>
-            <summary>
-              <h3 style={{ display: "inline", margin: 0 }}>Live run log</h3>{" "}
-              <span className="muted">
-                {hasRunning
-                  ? "what the run is doing right now (updates every few seconds)"
-                  : "output from the most recent run"}
-              </span>
-            </summary>
-            <div className="table-wrap" style={{ marginTop: "var(--s3)" }}>
-              <pre className="voice-preview" style={{ margin: 0, maxHeight: 320, overflow: "auto" }}>
-                {logTail}
-              </pre>
-            </div>
-          </details>
-        </Card>
+      {canRunHere ? (
+        <RunLog initialLog={logTail} initialRunning={hasRunning} />
       ) : null}
 
       {error ? (
