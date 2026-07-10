@@ -7,6 +7,8 @@ import { Card, Chip, EmptyState, type ChipTone } from "@/components/ui";
 import RunDiscoveryButton from "@/components/RunDiscoveryButton";
 import StopDiscoveryButton from "@/components/StopDiscoveryButton";
 import LocalTime from "@/components/LocalTime";
+import Elapsed from "@/components/Elapsed";
+import BoardAutoRefresh from "@/components/BoardAutoRefresh";
 import { sweepStaleRuns } from "@/lib/run-control";
 import type { AgentRunRow, AgentRunStatus, DebateRow } from "@/lib/types";
 
@@ -114,6 +116,7 @@ export default async function RunsPage() {
 
   return (
     <div className="stack">
+      <BoardAutoRefresh active={hasRunning} />
       <div className="page-head">
         <h1>Runs</h1>
       </div>
@@ -123,7 +126,16 @@ export default async function RunsPage() {
         {canRunHere ? (
           hasRunning ? (
             <>
-              <p>A run is in progress - new rows appear below as agents finish.</p>
+              <p>
+                One discovery run is in progress. It runs up to a few rounds of
+                Finder → Skeptic → Judge; the Finder searches the live web, which
+                can take several minutes per round. New rows appear below as each
+                agent finishes.
+              </p>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Want quicker, cheaper runs? Switch to <strong>Fast</strong> mode
+                under Settings → Discovery.
+              </p>
               <StopDiscoveryButton />
             </>
           ) : (
@@ -175,7 +187,10 @@ export default async function RunsPage() {
             </thead>
             <tbody>
               {groups.map((group) => {
-                const grouped = group.runId != null && group.rows.length > 1;
+                // Label anything with a runId as a discovery run - even mid-run
+                // when only the Finder row exists, so a lone "Running" isn't
+                // mistaken for a stuck one-off.
+                const grouped = group.runId != null;
                 const rows = group.rows.map((run) => {
                   const status = run.status as AgentRunStatus;
                   const tone = STATUS_TONE[status] ?? "neutral";
@@ -200,7 +215,13 @@ export default async function RunsPage() {
                       <td className="nowrap">
                         <LocalTime iso={run.started_at} />
                       </td>
-                      <td className="num">{formatDuration(run.duration_ms)}</td>
+                      <td className="num">
+                        {status === "running" ? (
+                          <Elapsed since={run.started_at} />
+                        ) : (
+                          formatDuration(run.duration_ms)
+                        )}
+                      </td>
                       <td className="num">{formatTokens(run.tokens_used)}</td>
                       <td className="num">{formatCost(run.cost_cents)}</td>
                       <td className="cell-error">
@@ -217,13 +238,22 @@ export default async function RunsPage() {
                 });
                 if (!grouped) return rows;
                 const status = groupStatus(group.rows);
+                const runningRow = group.rows.find((r) => r.status === "running");
                 return (
                   <Fragment key={group.key}>
                     <tr style={{ background: "var(--surface-2)" }}>
                       <td colSpan={7}>
                         <strong>Discovery run</strong>{" "}
                         <span className="muted">
-                          · {group.rows.length} agent steps
+                          · {group.rows.length} agent step
+                          {group.rows.length === 1 ? "" : "s"}
+                          {runningRow ? (
+                            <>
+                              {" "}
+                              · running <strong>{runningRow.agent_type}</strong> for{" "}
+                              <Elapsed since={runningRow.started_at} />
+                            </>
+                          ) : null}
                         </span>
                       </td>
                       <td>

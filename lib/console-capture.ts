@@ -28,6 +28,16 @@ function push(level: Level, args: unknown[]) {
   if (buffer.length > MAX) buffer.shift();
 }
 
+// Browser extensions (MetaMask, wallets, etc.) inject scripts into every page
+// and throw unhandled rejections that have nothing to do with this app - they
+// just clutter the console, the dev overlay, and captured feedback. Detect
+// those and swallow them.
+function isExtensionNoise(text: string): boolean {
+  return /chrome-extension:\/\/|moz-extension:\/\/|safari-web-extension:\/\/|metamask/i.test(
+    text,
+  );
+}
+
 export function installConsoleCapture() {
   if (installed || typeof window === "undefined") return;
   installed = true;
@@ -41,10 +51,25 @@ export function installConsoleCapture() {
   });
 
   window.addEventListener("error", (e) => {
+    if (isExtensionNoise(`${e.message} ${e.filename}`)) {
+      e.preventDefault();
+      return;
+    }
     push("error", [e.message, `${e.filename}:${e.lineno}:${e.colno}`]);
   });
   window.addEventListener("unhandledrejection", (e) => {
-    push("error", ["unhandledrejection", (e as PromiseRejectionEvent).reason]);
+    const reason = (e as PromiseRejectionEvent).reason;
+    const text =
+      reason instanceof Error
+        ? `${reason.name}: ${reason.message}\n${reason.stack ?? ""}`
+        : String(reason);
+    // Swallow wallet/extension noise (e.g. "Failed to connect to MetaMask") so it
+    // stops hitting the console, the Next dev overlay, and feedback captures.
+    if (isExtensionNoise(text)) {
+      e.preventDefault();
+      return;
+    }
+    push("error", ["unhandledrejection", reason]);
   });
 }
 
