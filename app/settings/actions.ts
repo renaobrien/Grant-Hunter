@@ -1,6 +1,8 @@
 "use server";
 
 import { execFile } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -319,6 +321,8 @@ export interface UpdateApply {
   ok: boolean;
   message: string;
   notes: string[];
+  /** SQL of any migrations that arrived in this update, to paste into Supabase. */
+  migrationSql?: string;
 }
 
 export async function applyUpdate(): Promise<UpdateApply> {
@@ -337,6 +341,7 @@ export async function applyUpdate(): Promise<UpdateApply> {
   }
 
   const notes: string[] = [];
+  let migrationSql = "";
   try {
     const diff = await run("git", ["diff", "--name-only", "ORIG_HEAD..HEAD"], { cwd });
     const changed = diff.stdout.split("\n").filter(Boolean);
@@ -345,14 +350,28 @@ export async function applyUpdate(): Promise<UpdateApply> {
       await run("npm", ["install", "--no-audit", "--no-fund"], { cwd });
       notes.push("Dependencies installed.");
     }
-    const migrations = changed.filter(
-      (f) => f.startsWith("supabase/migrations/") && f.endsWith(".sql"),
-    );
+    const migrations = changed
+      .filter((f) => f.startsWith("supabase/migrations/") && f.endsWith(".sql"))
+      .sort();
     if (migrations.length) {
+      // Read the arrived migrations so the panel can show EXACTLY the SQL to run.
+      // The service key can't run DDL, and /connect redirects away on a configured
+      // instance - so hand the operator the pasteable statements directly. The new
+      // migrations are additive + idempotent (add column if not exists), so this
+      // is safe to re-run.
+      const blocks: string[] = [];
+      for (const rel of migrations) {
+        try {
+          blocks.push(`-- ${rel.split("/").pop()}\n${readFileSync(join(cwd, rel), "utf8").trim()}`);
+        } catch {
+          // Unreadable file - skip; the note still names it.
+        }
+      }
+      migrationSql = blocks.join("\n\n");
       notes.push(
-        `New database migration${migrations.length > 1 ? "s" : ""} arrived (${migrations
+        `New database change${migrations.length > 1 ? "s" : ""} arrived (${migrations
           .map((m) => m.split("/").pop())
-          .join(", ")}). Run the SQL in your Supabase SQL editor - open /connect for the combined script - or run npm run db:push.`,
+          .join(", ")}). Copy the SQL below into your Supabase SQL editor and run it (safe to re-run), or run npm run db:push.`,
       );
     }
   } catch {
@@ -364,6 +383,7 @@ export async function applyUpdate(): Promise<UpdateApply> {
     ok: true,
     message: "Updated. The dev server hot-reloads most changes - restart npm run dev if anything looks off.",
     notes,
+    migrationSql: migrationSql || undefined,
   };
 }
 
