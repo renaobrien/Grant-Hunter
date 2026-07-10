@@ -127,6 +127,10 @@ export async function runDiscovery(
 
   let priorNotes: string | undefined;
   const fast = settings.speed_mode === "fast";
+  console.log(
+    `[discovery] starting: up to ${settings.discovery_rounds} round(s), ` +
+      `target ${settings.discovery_target_survivors} survivor(s), ${fast ? "fast" : "thorough"} mode.`,
+  );
 
   for (let round = 1; round <= settings.discovery_rounds; round++) {
     if (outOfTime()) {
@@ -149,13 +153,16 @@ export async function runDiscovery(
     const exclusions = [...new Set([...trackedLabels, ...rejectedLabels])].slice(0, 80);
 
     // 1) Finder proposes
+    console.log(`[discovery] round ${round}: finder searching the live web (can take a few minutes)…`);
     const { candidates } = await tracked(sb, "finder", trigger, { round, runId }, () =>
       runFinder({ apiKey: opts.apiKey, profile, preferenceContext, today, priorNotes, exclusions, fast }),
     );
     if (!candidates.length) {
       summary.stopped = summary.stopped ?? "finder returned no candidates";
+      console.log(`[discovery] round ${round}: finder found no new candidates.`);
       break;
     }
+    console.log(`[discovery] round ${round}: finder proposed ${candidates.length} candidate(s).`);
 
     // Re-check the cap between agents: a single round runs Finder + Skeptic +
     // Judge, each of which can spend real money, so one check at round start
@@ -170,6 +177,7 @@ export async function runDiscovery(
     }
 
     // 2) Skeptic refutes
+    console.log(`[discovery] round ${round}: skeptic vetting ${candidates.length} candidate(s)…`);
     const { verdicts } = await tracked(sb, "skeptic", trigger, { round, runId, n: candidates.length }, () =>
       runSkeptic({ apiKey: opts.apiKey, profile, candidates, fast }),
     );
@@ -189,6 +197,7 @@ export async function runDiscovery(
     }
 
     // 3) Judge reconciles
+    console.log(`[discovery] round ${round}: judge scoring what survived…`);
     const { rulings } = await tracked(sb, "judge", trigger, { round, runId, n: candidates.length }, () =>
       runJudge({ apiKey: opts.apiKey, profile, candidates, verdicts, preferenceContext }),
     );

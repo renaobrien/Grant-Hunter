@@ -19,6 +19,7 @@ interface RecentGrant {
 }
 
 async function main(): Promise<void> {
+  console.log(`[discovery] run started (${trigger}) at ${new Date().toISOString()}`);
   const sb = getServiceClient();
   const apiKey = await resolveAnthropicKey(sb);
 

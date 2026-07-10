@@ -1,7 +1,6 @@
 // Runs page - history of agent_runs (discovery, drafting, etc.) plus local
 // start/stop controls (see app/runs/actions.ts). Hosted instances trigger
 // runs from GitHub Actions instead.
-import { Fragment } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, Chip, EmptyState, type ChipTone } from "@/components/ui";
 import RunDiscoveryButton from "@/components/RunDiscoveryButton";
@@ -92,14 +91,58 @@ function groupRuns(runs: AgentRunRow[]): RunGroup[] {
   return groups;
 }
 
-// The representative status + message for a whole run: a running step wins, then
-// an errored step, else the run is done. Feeds classifyRun for one header chip.
-function groupOutcome(rows: AgentRunRow[]): { status: string; message: string | null } {
-  const running = rows.find((r) => r.status === "running");
-  if (running) return { status: "running", message: null };
-  const errored = rows.find((r) => r.status === "error");
-  if (errored) return { status: "error", message: errored.error_message };
-  return { status: "success", message: null };
+const sumField = (rows: AgentRunRow[], key: "tokens_used" | "cost_cents"): number | null => {
+  const vals = rows.map((r) => r[key]).filter((v): v is number => typeof v === "number");
+  return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
+};
+
+// Collapse a whole run (finder/skeptic/judge rows sharing a runId) into ONE
+// display row: representative status, the run's start, its total duration, and
+// summed tokens/cost. A running step wins, then an error, else done.
+interface RunView {
+  key: string;
+  label: string;
+  runningAgent: string | null;
+  trigger: string;
+  status: string;
+  message: string | null;
+  startedAt: string | null;
+  durationMs: number | null;
+  running: boolean;
+  tokens: number | null;
+  cost: number | null;
+}
+
+function toRunView(group: RunGroup): RunView {
+  const rows = group.rows; // newest first (query orders started_at desc)
+  const earliest = rows[rows.length - 1];
+  const runningRow = rows.find((r) => r.status === "running");
+  const erroredRow = rows.find((r) => r.status === "error");
+  const status = runningRow ? "running" : erroredRow ? "error" : "success";
+  const message = erroredRow?.error_message ?? null;
+  const grouped = group.runId != null;
+
+  let durationMs: number | null = null;
+  if (!runningRow) {
+    const starts = rows.map((r) => (r.started_at ? Date.parse(r.started_at) : NaN)).filter((n) => !Number.isNaN(n));
+    const ends = rows.map((r) => (r.completed_at ? Date.parse(r.completed_at) : NaN)).filter((n) => !Number.isNaN(n));
+    if (starts.length && ends.length) durationMs = Math.max(...ends) - Math.min(...starts);
+    if (durationMs == null) durationMs = grouped ? null : earliest?.duration_ms ?? null;
+  }
+
+  return {
+    key: group.key,
+    label: grouped ? "Discovery run" : earliest?.agent_type ?? "run",
+    runningAgent: runningRow?.agent_type ?? null,
+    trigger: earliest?.trigger_type ?? "",
+    status,
+    message,
+    startedAt: earliest?.started_at ?? null,
+    durationMs,
+    running: !!runningRow,
+    tokens: sumField(rows, "tokens_used"),
+    cost: sumField(rows, "cost_cents"),
+  };
 }
 
 const str = (v: unknown): string | null =>
@@ -113,7 +156,7 @@ export default async function RunsPage() {
     supabase
       .from("agent_runs")
       .select(
-        "id, agent_type, trigger_type, status, started_at, duration_ms, tokens_used, cost_cents, error_message, input_data",
+        "id, agent_type, trigger_type, status, started_at, completed_at, duration_ms, tokens_used, cost_cents, error_message, input_data",
       )
       .order("started_at", { ascending: false, nullsFirst: false })
       .limit(50),
@@ -214,90 +257,43 @@ export default async function RunsPage() {
             </thead>
             <tbody>
               {groups.map((group) => {
-                // A runId means a discovery run (finder/skeptic/judge). Its child
-                // rows carry per-step metrics but no chip - the one chip lives on
-                // the header, so there's never a wall of duplicate pills.
-                const grouped = group.runId != null;
-                const childRows = group.rows.map((run) => {
-                  const errText = humanizeError(run.status, run.error_message);
-                  const running = run.status === "running";
-                  return (
-                    <tr key={run.id}>
-                      <td className="nowrap">
-                        <span style={{ paddingLeft: grouped ? "var(--s4)" : 0 }}>
-                          {run.agent_type}
-                        </span>
-                      </td>
-                      <td className="nowrap">
-                        <span className="muted">{run.trigger_type}</span>
-                      </td>
-                      <td className="nowrap">
-                        {grouped ? (
-                          <span className="muted" style={{ fontSize: "0.85rem" }}>
-                            {classifyRun(run.status, run.error_message).label.toLowerCase()}
-                          </span>
-                        ) : (
-                          (() => {
-                            const c = classifyRun(run.status, run.error_message);
-                            return <Chip label={c.label} tone={c.tone} />;
-                          })()
-                        )}
-                      </td>
-                      <td className="nowrap">
-                        <LocalTime iso={run.started_at} />
-                      </td>
-                      <td className="num">
-                        {running ? (
-                          <Elapsed since={run.started_at} />
-                        ) : (
-                          formatDuration(run.duration_ms)
-                        )}
-                      </td>
-                      <td className="num">{formatTokens(run.tokens_used)}</td>
-                      <td className="num">{formatCost(run.cost_cents)}</td>
-                      <td className="cell-error">
-                        {errText ? (
-                          <span title={run.error_message ?? undefined}>{errText}</span>
-                        ) : (
-                          <span className="muted">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                });
-                if (!grouped) return childRows;
-                const outcome = groupOutcome(group.rows);
-                const cls = classifyRun(outcome.status, outcome.message);
-                const runningRow = group.rows.find((r) => r.status === "running");
-                const firstStart =
-                  group.rows[group.rows.length - 1]?.started_at ?? group.rows[0]?.started_at;
+                const v = toRunView(group);
+                const cls = classifyRun(v.status, v.message);
+                const errText = humanizeError(v.status, v.message);
                 return (
-                  <Fragment key={group.key}>
-                    <tr style={{ background: "var(--surface-2)" }}>
-                      <td colSpan={8}>
-                        <span
-                          className="row"
-                          style={{ gap: "var(--s2)", alignItems: "baseline", flexWrap: "wrap" }}
-                        >
-                          <Chip label={cls.label} tone={cls.tone} />
-                          <strong>Discovery run</strong>
-                          <span className="muted">
-                            <LocalTime iso={firstStart} />
-                          </span>
-                          {runningRow ? (
-                            <span className="muted">
-                              · {runningRow.agent_type} <Elapsed since={runningRow.started_at} />
-                            </span>
-                          ) : (
-                            <span className="muted">
-                              · {group.rows.length} step{group.rows.length === 1 ? "" : "s"}
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                    </tr>
-                    {childRows}
-                  </Fragment>
+                  <tr key={v.key}>
+                    <td className="nowrap">
+                      <strong>{v.label}</strong>
+                      {v.running && v.runningAgent ? (
+                        <span className="muted"> · {v.runningAgent}</span>
+                      ) : null}
+                    </td>
+                    <td className="nowrap">
+                      <span className="muted">{v.trigger}</span>
+                    </td>
+                    <td>
+                      <Chip label={cls.label} tone={cls.tone} />
+                    </td>
+                    <td className="nowrap">
+                      <LocalTime iso={v.startedAt} />
+                    </td>
+                    <td className="num">
+                      {v.running ? (
+                        <Elapsed since={v.startedAt} />
+                      ) : (
+                        formatDuration(v.durationMs)
+                      )}
+                    </td>
+                    <td className="num">{formatTokens(v.tokens)}</td>
+                    <td className="num">{formatCost(v.cost)}</td>
+                    <td className="cell-error">
+                      {errText ? (
+                        <span title={v.message ?? undefined}>{errText}</span>
+                      ) : (
+                        <span className="muted">-</span>
+                      )}
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
