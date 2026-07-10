@@ -145,6 +145,7 @@ export interface ProfileRow extends Profile {
 // ---------------------------------------------------------------------------
 export type RunMode = "github" | "local" | "manual";
 export type SpeedMode = "thorough" | "fast";
+export type LlmProvider = "anthropic" | "ollama";
 
 export interface SettingsRow {
   id: number;

@@ -42,6 +42,70 @@ function stripFancyDashes(s: string): string {
   return s.replace(/\s*[—–]\s*/g, " - ");
 }
 
+// ---------------------------------------------------------------------------
+// Provider selection. Default is Anthropic. Set LLM_PROVIDER=ollama (local
+// instances only) to run the agents on a local model via Ollama - free, private,
+// no Anthropic key. Caveat: Ollama has no server-side web search, so discovery's
+// Finder/Skeptic can't verify live pages (drafting, judging, distilling, profile
+// compile, and requirements extraction all work fully). Config is read from the
+// environment so spawned engine runs (which reload .env.local) pick it up.
+// ---------------------------------------------------------------------------
+export const isOllama = (): boolean =>
+  (process.env.LLM_PROVIDER ?? "").trim().toLowerCase() === "ollama";
+
+/** Call a local Ollama model via its native /api/chat. No tools, no web search. */
+async function callOllama(options: ClaudeOptions): Promise<ClaudeResponse> {
+  const base = (process.env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/+$/, "");
+  const model = process.env.OLLAMA_MODEL || "llama3.1";
+
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        messages: [
+          { role: "system", content: options.system },
+          { role: "user", content: options.userMessage },
+        ],
+        options: { num_predict: options.maxTokens ?? 4096 },
+      }),
+      // Local generation can be slow on big models; give it room.
+      signal: AbortSignal.timeout(20 * 60 * 1000),
+    });
+  } catch (e) {
+    throw new Error(
+      `Couldn't reach Ollama at ${base} (${(e as Error).message}). Is 'ollama serve' running and the model pulled?`,
+    );
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(
+      `Ollama returned HTTP ${res.status} for model '${model}'. ${body.slice(0, 200)}`.trim(),
+    );
+  }
+
+  const data = (await res.json()) as {
+    message?: { content?: string };
+    done_reason?: string;
+    prompt_eval_count?: number;
+    eval_count?: number;
+  };
+  const text = stripFancyDashes((data.message?.content ?? "").trim());
+  if (!text) {
+    throw new Error(`Ollama model '${model}' returned no text. Try a larger/instruct model.`);
+  }
+  return {
+    text,
+    stopReason: data.done_reason ?? "stop",
+    inputTokens: data.prompt_eval_count ?? 0,
+    outputTokens: data.eval_count ?? 0,
+    webSearchRequests: 0,
+  };
+}
+
 /**
  * Turn a raw Claude/Anthropic error into a short, actionable message for the UI.
  * The SDK surfaces provider errors as messages containing the provider's text
@@ -105,6 +169,10 @@ function webSearchTool(model: string, maxUses: number): Anthropic.Messages.ToolU
 }
 
 export async function callClaude(options: ClaudeOptions): Promise<ClaudeResponse> {
+  // Local model path: route to Ollama and skip everything Anthropic-specific
+  // (client, web search tools, pause_turn continuation).
+  if (isOllama()) return callOllama(options);
+
   const {
     apiKey,
     system,
@@ -177,6 +245,8 @@ export function estimateCostCents(
   model: string,
   webSearchRequests = 0,
 ): number {
+  // Local models are free - no spend against the daily cap.
+  if (isOllama()) return 0;
   const rates: Record<string, [number, number]> = {
     opus: [500, 2500],
     sonnet: [300, 1500],

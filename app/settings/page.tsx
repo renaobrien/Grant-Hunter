@@ -13,8 +13,10 @@ import { join } from "node:path";
 import SettingsForm from "./SettingsForm";
 import ChannelsEditor, { type ChannelView } from "./ChannelsEditor";
 import ApiKeysForm from "./ApiKeysForm";
+import LlmProviderForm from "./LlmProviderForm";
 import UpdatePanel from "./UpdatePanel";
 import ScheduleForm from "./ScheduleForm";
+import type { LlmProvider } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +109,11 @@ export default async function SettingsPage() {
   const canSelfUpdate =
     !process.env.VERCEL && existsSync(join(process.cwd(), ".git"));
 
+  // Local-model provider (Ollama) is a self-hosted-only feature (writes .env.local).
+  const canUseLocalModel = !process.env.VERCEL;
+  const llmProvider: LlmProvider =
+    (process.env.LLM_PROVIDER ?? "").trim().toLowerCase() === "ollama" ? "ollama" : "anthropic";
+
   return (
     <div className="stack">
       <div className="page-head">
@@ -128,6 +135,21 @@ export default async function SettingsPage() {
         </p>
         <ApiKeysForm hasKey={hasAnthropicKey} source={keySource} />
       </Card>
+
+      {canUseLocalModel ? (
+        <Card>
+          <h2>AI provider</h2>
+          <p className="muted">
+            Run the agents on Anthropic (cloud) or a local Ollama model (free and
+            private). The Anthropic key above is only used in Anthropic mode.
+          </p>
+          <LlmProviderForm
+            initialProvider={llmProvider}
+            initialBaseUrl={process.env.OLLAMA_BASE_URL ?? ""}
+            initialModel={process.env.OLLAMA_MODEL ?? ""}
+          />
+        </Card>
+      ) : null}
 
       <Card>
         <h2>Discovery &amp; budget</h2>

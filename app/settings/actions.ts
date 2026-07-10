@@ -13,8 +13,9 @@ import {
 } from "@/engine/db";
 import { distillPreferences } from "@/engine/distill-preferences";
 import { friendlyClaudeError } from "@/engine/anthropic";
+import { readEnv, writeEnv } from "@/lib/env-file";
 import type { AgentUsage } from "@/engine/types";
-import type { NotificationChannel } from "@/lib/types";
+import type { LlmProvider, NotificationChannel } from "@/lib/types";
 
 const run = promisify(execFile);
 
@@ -119,6 +120,94 @@ export async function regeneratePreferenceSummary(): Promise<
     const usage = (e as { usage?: AgentUsage }).usage;
     await finishRun(supabase, run, { status: "error", usage, error: (e as Error).message });
     return { ok: false, error: friendlyClaudeError(e) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AI provider: Anthropic (default) or a local Ollama model. Local-only feature -
+// Ollama runs on the operator's machine, so this writes to .env.local (and can't
+// run on a read-only host). The engine reads LLM_PROVIDER / OLLAMA_* from the
+// environment; spawned runs reload .env.local, and we also update this process's
+// env so in-app calls pick up the change without a restart.
+// ---------------------------------------------------------------------------
+const DEFAULT_OLLAMA_URL = "http://localhost:11434";
+
+export async function saveLlmProvider(input: {
+  provider: LlmProvider;
+  ollamaBaseUrl?: string;
+  ollamaModel?: string;
+}): Promise<ActionResult> {
+  if (process.env.VERCEL) {
+    return {
+      ok: false,
+      error: "A local model only works on a self-hosted instance, not a hosted deploy.",
+    };
+  }
+  if (input.provider !== "anthropic" && input.provider !== "ollama") {
+    return { ok: false, error: "Unknown provider." };
+  }
+
+  const baseUrl = (input.ollamaBaseUrl?.trim() || DEFAULT_OLLAMA_URL).replace(/\/+$/, "");
+  const model = input.ollamaModel?.trim() ?? "";
+  if (input.provider === "ollama" && !model) {
+    return { ok: false, error: "Enter the Ollama model name (e.g. llama3.1)." };
+  }
+
+  try {
+    const env = readEnv();
+    if (input.provider === "ollama") {
+      env.LLM_PROVIDER = "ollama";
+      env.OLLAMA_BASE_URL = baseUrl;
+      env.OLLAMA_MODEL = model;
+    } else {
+      // Back to Anthropic: clear the local-model vars (writeEnv drops empties).
+      env.LLM_PROVIDER = "";
+      env.OLLAMA_BASE_URL = "";
+      env.OLLAMA_MODEL = "";
+    }
+    writeEnv(env);
+
+    // Reflect the change in THIS process so in-app calls (distiller, requirements
+    // extraction) switch immediately; spawned runs reload .env.local themselves.
+    if (input.provider === "ollama") {
+      process.env.LLM_PROVIDER = "ollama";
+      process.env.OLLAMA_BASE_URL = baseUrl;
+      process.env.OLLAMA_MODEL = model;
+    } else {
+      delete process.env.LLM_PROVIDER;
+      delete process.env.OLLAMA_BASE_URL;
+      delete process.env.OLLAMA_MODEL;
+    }
+  } catch {
+    return {
+      ok: false,
+      error: "Couldn't write .env.local (read-only filesystem?). This feature needs a local install.",
+    };
+  }
+
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+/** Ping an Ollama server and return its installed model names, so the operator
+ *  can confirm it's running and pick a model. */
+export async function testOllama(
+  baseUrl: string,
+): Promise<{ ok: true; models: string[] } | { ok: false; error: string }> {
+  const base = (baseUrl.trim() || DEFAULT_OLLAMA_URL).replace(/\/+$/, "");
+  try {
+    const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return { ok: false, error: `Ollama responded HTTP ${res.status} at ${base}.` };
+    const data = (await res.json()) as { models?: { name?: string }[] };
+    const models = (data.models ?? [])
+      .map((m) => m.name)
+      .filter((n): n is string => typeof n === "string");
+    return { ok: true, models };
+  } catch (e) {
+    return {
+      ok: false,
+      error: `Couldn't reach Ollama at ${base} (${(e as Error).message}). Run 'ollama serve' first.`,
+    };
   }
 }
 

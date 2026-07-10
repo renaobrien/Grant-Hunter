@@ -3,7 +3,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { AgentUsage, JudgeRuling, Profile } from "./types";
-import { estimateCostCents } from "./anthropic";
+import { estimateCostCents, isOllama } from "./anthropic";
 
 export function getServiceClient(): SupabaseClient {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,6 +31,10 @@ export function requireAnthropicKey(): string {
  * hosting) deploys work. Throws a message that points at both sources.
  */
 export async function resolveAnthropicKey(sb: SupabaseClient): Promise<string> {
+  // Local (Ollama) mode needs no Anthropic key - return a placeholder so the
+  // entry points that resolve a key up front don't block a fully-local run.
+  if (isOllama()) return "ollama-local";
+
   let fromDb = "";
   const { data } = await sb
     .from("settings")
