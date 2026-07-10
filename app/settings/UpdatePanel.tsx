@@ -12,7 +12,7 @@ export default function UpdatePanel() {
   const [latest, setLatest] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
-  const [migrationSql, setMigrationSql] = useState<string>("");
+  const [bootstrapSql, setBootstrapSql] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -42,14 +42,14 @@ export default function UpdatePanel() {
       }
       setMessage(res.message);
       setNotes(res.notes);
-      setMigrationSql(res.migrationSql ?? "");
+      setBootstrapSql(res.bootstrapSql ?? "");
       setPhase("applied");
     });
   }
 
   async function copySql() {
     try {
-      await navigator.clipboard.writeText(migrationSql);
+      await navigator.clipboard.writeText(bootstrapSql);
       setCopied(true);
     } catch {
       setCopied(false);
@@ -106,17 +106,17 @@ export default function UpdatePanel() {
               {n}
             </p>
           ))}
-          {migrationSql ? (
+          {bootstrapSql ? (
             <div className="stack" style={{ gap: "var(--s2)" }}>
               <div className="row">
                 <button type="button" className="btn btn-sm btn-primary" onClick={copySql}>
-                  {copied ? "Copied ✓" : "Copy migration SQL"}
+                  {copied ? "Copied ✓" : "Copy one-time setup SQL"}
                 </button>
                 <span className="muted" style={{ fontSize: "0.85rem" }}>
-                  Paste into Supabase → SQL editor → Run. Safe to re-run.
+                  Paste into Supabase → SQL editor → Run, once. Then press Update again.
                 </span>
               </div>
-              <pre className="voice-preview">{migrationSql}</pre>
+              <pre className="voice-preview">{bootstrapSql}</pre>
             </div>
           ) : null}
         </div>

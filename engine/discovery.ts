@@ -104,6 +104,12 @@ export async function runDiscovery(
 
   const runId = randomUUID();
   const today = new Date().toISOString().slice(0, 10);
+  // Hard ceiling on the whole run's wall clock. Each agent call has its own
+  // 25-min timeout, but a slow multi-round run (or an API stuck retrying) can
+  // still grind far too long. Bail between agents once we cross this.
+  const runStartedMs = Date.now();
+  const RUN_MAX_MS = 40 * 60 * 1000;
+  const outOfTime = () => Date.now() - runStartedMs > RUN_MAX_MS;
   const summary: DiscoverySummary = {
     runId,
     rounds: 0,
@@ -123,6 +129,10 @@ export async function runDiscovery(
   const fast = settings.speed_mode === "fast";
 
   for (let round = 1; round <= settings.discovery_rounds; round++) {
+    if (outOfTime()) {
+      summary.stopped = "hit the 40-minute run ceiling";
+      break;
+    }
     if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) <= 0) {
       summary.stopped = "hit daily budget mid-run";
       break;
@@ -154,6 +164,10 @@ export async function runDiscovery(
       summary.stopped = "hit daily budget after finder";
       break;
     }
+    if (outOfTime()) {
+      summary.stopped = "hit the 40-minute run ceiling";
+      break;
+    }
 
     // 2) Skeptic refutes
     const { verdicts } = await tracked(sb, "skeptic", trigger, { round, runId, n: candidates.length }, () =>
@@ -162,6 +176,10 @@ export async function runDiscovery(
 
     if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) <= 0) {
       summary.stopped = "hit daily budget after skeptic";
+      break;
+    }
+    if (outOfTime()) {
+      summary.stopped = "hit the 40-minute run ceiling";
       break;
     }
     if (verdicts.length !== candidates.length) {

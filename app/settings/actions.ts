@@ -1,10 +1,11 @@
 "use server";
 
 import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { revalidatePath } from "next/cache";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import {
   budgetRemainingCents,
@@ -321,8 +322,101 @@ export interface UpdateApply {
   ok: boolean;
   message: string;
   notes: string[];
-  /** SQL of any migrations that arrived in this update, to paste into Supabase. */
-  migrationSql?: string;
+  /**
+   * One-time SQL to paste, ONLY when the auto-migrator isn't installed yet. After
+   * this is pasted once, future updates apply their own SQL with no manual step.
+   */
+  bootstrapSql?: string;
+}
+
+const RUNNER_VERSION = "0014_migration_runner";
+
+// A service-role Supabase client built straight from env (not the request/auth
+// client), because auto-migration needs the service role regardless of login mode.
+function adminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createAdminClient(url, key, { auth: { persistSession: false } });
+}
+
+// Read every migration file, in order, as { version, sql }.
+function readMigrations(cwd: string): { version: string; sql: string }[] {
+  try {
+    const dir = join(cwd, "supabase", "migrations");
+    return readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .map((f) => ({
+        version: f.replace(/\.sql$/, ""),
+        sql: readFileSync(join(dir, f), "utf8"),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Apply any migrations the database hasn't run yet, via the exec_sql runner
+ * (migration 0014). Returns notes for the UI, plus one-time bootstrapSql when the
+ * runner itself isn't installed yet (a fresh install gets it in the /connect
+ * paste; an older install pastes it once, then updates are automatic).
+ */
+async function autoMigrate(cwd: string): Promise<{ notes: string[]; bootstrapSql?: string }> {
+  const onDisk = readMigrations(cwd);
+  const admin = adminClient();
+  if (!admin || !onDisk.length) return { notes: [] };
+
+  // Is the runner installed? exec_sql returns void, so a clean probe is a no-op.
+  const probe = await admin.rpc("exec_sql", { sql: "select 1" });
+  const runnerMissing =
+    !!probe.error &&
+    (probe.error.code === "PGRST202" ||
+      /exec_sql|could not find|schema cache|does not exist/i.test(probe.error.message));
+
+  if (runnerMissing) {
+    const runner = onDisk.find((m) => m.version === RUNNER_VERSION);
+    return {
+      notes: [
+        "One-time setup to turn on automatic database updates: paste the SQL below into your Supabase SQL editor and run it once. After that, every update applies its own database changes with no copy-paste. Give it a few seconds, then press Update again.",
+      ],
+      bootstrapSql: runner?.sql.trim(),
+    };
+  }
+
+  const { data: appliedRows, error: readErr } = await admin
+    .from("schema_migrations")
+    .select("version");
+  if (readErr) {
+    // Runner function exists but the tracker table doesn't - treat as not set up.
+    const runner = onDisk.find((m) => m.version === RUNNER_VERSION);
+    return {
+      notes: ["Finish enabling automatic updates: paste the SQL below once, then press Update again."],
+      bootstrapSql: runner?.sql.trim(),
+    };
+  }
+
+  const applied = new Set((appliedRows ?? []).map((r) => r.version as string));
+  const pending = onDisk.filter((m) => !applied.has(m.version));
+  if (!pending.length) return { notes: [] };
+
+  const done: string[] = [];
+  for (const m of pending) {
+    const res = await admin.rpc("exec_sql", { sql: m.sql });
+    if (res.error) {
+      return {
+        notes: [
+          done.length ? `Applied: ${done.join(", ")}.` : "",
+          `Database update ${m.version} failed: ${res.error.message}. Fix that, then press Update again.`,
+        ].filter(Boolean),
+      };
+    }
+    await admin.from("schema_migrations").insert({ version: m.version });
+    done.push(m.version);
+  }
+  return {
+    notes: [`Applied ${done.length} database update${done.length > 1 ? "s" : ""} automatically: ${done.join(", ")}.`],
+  };
 }
 
 export async function applyUpdate(): Promise<UpdateApply> {
@@ -341,7 +435,6 @@ export async function applyUpdate(): Promise<UpdateApply> {
   }
 
   const notes: string[] = [];
-  let migrationSql = "";
   try {
     const diff = await run("git", ["diff", "--name-only", "ORIG_HEAD..HEAD"], { cwd });
     const changed = diff.stdout.split("\n").filter(Boolean);
@@ -350,32 +443,20 @@ export async function applyUpdate(): Promise<UpdateApply> {
       await run("npm", ["install", "--no-audit", "--no-fund"], { cwd });
       notes.push("Dependencies installed.");
     }
-    const migrations = changed
-      .filter((f) => f.startsWith("supabase/migrations/") && f.endsWith(".sql"))
-      .sort();
-    if (migrations.length) {
-      // Read the arrived migrations so the panel can show EXACTLY the SQL to run.
-      // The service key can't run DDL, and /connect redirects away on a configured
-      // instance - so hand the operator the pasteable statements directly. The new
-      // migrations are additive + idempotent (add column if not exists), so this
-      // is safe to re-run.
-      const blocks: string[] = [];
-      for (const rel of migrations) {
-        try {
-          blocks.push(`-- ${rel.split("/").pop()}\n${readFileSync(join(cwd, rel), "utf8").trim()}`);
-        } catch {
-          // Unreadable file - skip; the note still names it.
-        }
-      }
-      migrationSql = blocks.join("\n\n");
-      notes.push(
-        `New database change${migrations.length > 1 ? "s" : ""} arrived (${migrations
-          .map((m) => m.split("/").pop())
-          .join(", ")}). Copy the SQL below into your Supabase SQL editor and run it (safe to re-run), or run npm run db:push.`,
-      );
-    }
   } catch {
     // Diff inspection is best-effort; the pull itself already succeeded.
+  }
+
+  // Apply any new database migrations automatically through the exec_sql runner.
+  // Uses the on-disk migration set + the schema_migrations ledger, so it catches
+  // anything unapplied - not just what arrived in this exact pull.
+  let bootstrapSql: string | undefined;
+  try {
+    const mig = await autoMigrate(cwd);
+    notes.push(...mig.notes);
+    bootstrapSql = mig.bootstrapSql;
+  } catch (e) {
+    notes.push(`Couldn't auto-apply database updates: ${(e as Error).message}. The code still updated.`);
   }
 
   revalidatePath("/", "layout");
@@ -383,7 +464,7 @@ export async function applyUpdate(): Promise<UpdateApply> {
     ok: true,
     message: "Updated. The dev server hot-reloads most changes - restart npm run dev if anything looks off.",
     notes,
-    migrationSql: migrationSql || undefined,
+    bootstrapSql,
   };
 }
 

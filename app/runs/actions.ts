@@ -12,10 +12,9 @@ import { join } from "node:path";
 import { createClient } from "@/lib/supabase/server";
 import { resolveAnthropicKey } from "@/engine/db";
 import {
-  clearPidFile,
   ensureRunDir,
+  killRun,
   logFile,
-  pidAlive,
   pidFile,
   readPid,
   sweepStaleRuns,
@@ -117,22 +116,7 @@ export async function stopDiscovery(): Promise<StopDiscoveryResult> {
   const supabase = await createClient();
 
   const pid = readPid();
-  if (pid && pidAlive(pid)) {
-    try {
-      // The child was spawned detached (its own process group), so a negative
-      // pid kills the whole group including tsx's forked worker.
-      process.kill(-pid, "SIGTERM");
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== "ESRCH") {
-        try {
-          process.kill(pid, "SIGTERM");
-        } catch {
-          // Process already gone.
-        }
-      }
-    }
-  }
-  clearPidFile();
+  killRun();
 
   // Mark every running row regardless of pid state - this also serves as the
   // manual unblock when the pidfile is missing or the process already died.

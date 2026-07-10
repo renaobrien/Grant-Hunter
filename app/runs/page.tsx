@@ -9,7 +9,7 @@ import StopDiscoveryButton from "@/components/StopDiscoveryButton";
 import LocalTime from "@/components/LocalTime";
 import Elapsed from "@/components/Elapsed";
 import BoardAutoRefresh from "@/components/BoardAutoRefresh";
-import { sweepStaleRuns } from "@/lib/run-control";
+import { sweepStaleRuns, tailLog } from "@/lib/run-control";
 import type { AgentRunRow, AgentRunStatus, DebateRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -113,6 +113,9 @@ export default async function RunsPage() {
   const hasRunning = runs.some((r) => r.status === "running");
   // In-process runs need a long-lived machine (local/self-host), not serverless.
   const canRunHere = !process.env.VERCEL;
+  // The run writes to a log file, not this terminal. Surface its tail so a live
+  // run isn't a black box. Refreshes with the page via BoardAutoRefresh.
+  const logTail = canRunHere ? tailLog(40) : null;
 
   return (
     <div className="stack">
@@ -158,6 +161,26 @@ export default async function RunsPage() {
           </p>
         )}
       </Card>
+
+      {logTail ? (
+        <Card className="note-panel">
+          <details open={hasRunning}>
+            <summary>
+              <h3 style={{ display: "inline", margin: 0 }}>Live run log</h3>{" "}
+              <span className="muted">
+                {hasRunning
+                  ? "what the run is doing right now (updates every few seconds)"
+                  : "output from the most recent run"}
+              </span>
+            </summary>
+            <div className="table-wrap" style={{ marginTop: "var(--s3)" }}>
+              <pre className="voice-preview" style={{ margin: 0, maxHeight: 320, overflow: "auto" }}>
+                {logTail}
+              </pre>
+            </div>
+          </details>
+        </Card>
+      ) : null}
 
       {error ? (
         <Card>
