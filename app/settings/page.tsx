@@ -132,6 +132,7 @@ export default async function SettingsPage() {
         <SettingsForm
           initial={{
             daily_budget_usd: settings?.daily_budget_usd ?? 5,
+            run_budget_usd: settings?.run_budget_usd ?? 2,
             discovery_rounds: settings?.discovery_rounds ?? 2,
             discovery_target_survivors:
               settings?.discovery_target_survivors ?? 5,

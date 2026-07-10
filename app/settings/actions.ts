@@ -29,6 +29,7 @@ const CHANNELS = ["slack", "discord", "telegram", "email"] as const satisfies re
 
 export interface SettingsValues {
   daily_budget_usd: number;
+  run_budget_usd: number;
   discovery_rounds: number;
   discovery_target_survivors: number;
   discovery_min_fit: number;
@@ -41,6 +42,7 @@ export interface SettingsValues {
 // written here - the schedule is owned by .github/workflows/discovery.yml.
 export async function saveSettings(vals: SettingsValues): Promise<ActionResult> {
   const budget = Number(vals.daily_budget_usd);
+  const runBudget = Number(vals.run_budget_usd);
   const rounds = Number(vals.discovery_rounds);
   const survivors = Number(vals.discovery_target_survivors);
   const minFit = Number(vals.discovery_min_fit);
@@ -48,6 +50,9 @@ export async function saveSettings(vals: SettingsValues): Promise<ActionResult> 
 
   if (!Number.isFinite(budget) || budget < 0) {
     return { ok: false, error: "Daily budget must be a non-negative number." };
+  }
+  if (!Number.isFinite(runBudget) || runBudget < 0) {
+    return { ok: false, error: "Per-run budget must be a non-negative number." };
   }
   if (!Number.isInteger(rounds) || rounds < 1) {
     return { ok: false, error: "Discovery rounds must be a whole number ≥ 1." };
@@ -70,6 +75,7 @@ export async function saveSettings(vals: SettingsValues): Promise<ActionResult> 
     {
       id: 1,
       daily_budget_usd: budget,
+      run_budget_usd: runBudget,
       discovery_rounds: rounds,
       discovery_target_survivors: survivors,
       discovery_min_fit: minFit,

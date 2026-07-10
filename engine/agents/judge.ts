@@ -2,9 +2,15 @@
 // call per candidate, and scores ethos alignment (req #6). Owns fit + ethos; defers to
 // the Skeptic on eligibility + freshness (asymmetric tie-breaks in JUDGE_ROLE).
 
-import { callClaude, MODELS, parseJsonFromResponse } from "../anthropic";
+import { callClaude, MODELS, parseJsonFromResponse, worstCaseCents } from "../anthropic";
 import { renderVoice, JUDGE_ROLE } from "../render-profile";
 import type { AgentUsage, Candidate, JudgeRuling, Profile, SkepticVerdict } from "../types";
+
+const MAX_TOKENS = 12000;
+
+/** Worst-case cents for one judge call: pre-flight budget check + error floor. */
+export const judgeWorstCaseCents = (): number =>
+  worstCaseCents({ model: MODELS.opus, maxTokens: MAX_TOKENS });
 
 const SCHEMA = `Return ONLY a JSON array of rulings - EXACTLY one per candidate, in the SAME ORDER as the candidates (INCLUDE non-survivors with survives=false so the debate is auditable). Each item exactly:
 {"survives": boolean, "funder": string, "program_name": string, "amount": string, "deadline": string,
@@ -20,6 +26,8 @@ export async function runJudge(opts: {
   candidates: Candidate[];
   verdicts: SkepticVerdict[];
   preferenceContext: string;
+  /** Abort in-flight API requests once the run's wall clock is up. */
+  deadlineMs?: number;
 }): Promise<{ rulings: JudgeRuling[]; usage: AgentUsage }> {
   const system = [renderVoice(opts.profile), JUDGE_ROLE, opts.preferenceContext].join("\n\n");
   const user = [
@@ -36,8 +44,9 @@ export async function runJudge(opts: {
     system,
     userMessage: user,
     model: MODELS.opus,
-    maxTokens: 12000,
+    maxTokens: MAX_TOKENS,
     // no web search - the Judge reasons over what Finder/Skeptic already gathered
+    deadlineMs: opts.deadlineMs,
   });
 
   const usage: AgentUsage = {

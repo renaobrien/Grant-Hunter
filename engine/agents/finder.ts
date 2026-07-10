@@ -1,9 +1,20 @@
 // Finder - proposes grant candidates via multi-angle web search. Ports the search
 // approach from eos-grants/agents/digest.js. Generous by design; the Skeptic culls.
 
-import { callClaude, MODELS, parseJsonFromResponse } from "../anthropic";
+import { callClaude, MODELS, parseJsonFromResponse, worstCaseCents } from "../anthropic";
 import { renderVoice, FINDER_ROLE } from "../render-profile";
 import type { AgentUsage, Candidate, Profile } from "../types";
+
+const MAX_TOKENS = 6000;
+const searchBudgetFor = (fast?: boolean) => (fast ? 3 : 4);
+
+/** Worst-case cents for one finder call: pre-flight budget check + error floor. */
+export const finderWorstCaseCents = (fast?: boolean): number =>
+  worstCaseCents({
+    model: MODELS.sonnet,
+    maxTokens: MAX_TOKENS,
+    webSearchMaxUses: searchBudgetFor(fast),
+  });
 
 const SCHEMA = `Return ONLY a JSON array. Each item exactly:
 {"funder": string, "program_name": string, "amount": string ("$50K-$100K" or "unknown"),
@@ -23,11 +34,18 @@ export async function runFinder(opts: {
   count?: number;
   /** 'fast' trims the web-search budget for quicker, cheaper runs. */
   fast?: boolean;
+  /** Abort in-flight API requests once the run's wall clock is up. */
+  deadlineMs?: number;
 }): Promise<{ candidates: Candidate[]; usage: AgentUsage }> {
   const system = [renderVoice(opts.profile), FINDER_ROLE, opts.preferenceContext].join("\n\n");
   const count = opts.count ?? 12;
+  // Keep the search budget small and TELL the model what it is: an unbudgeted
+  // prompt burns every allowed search and runs out of turns before emitting
+  // JSON (max cost, zero candidates).
+  const searchBudget = searchBudgetFor(opts.fast);
   const user = [
     `Today is ${opts.today}. Run grant discovery for this organization.`,
+    `You have at most ${searchBudget} web searches. Plan them to cover different angles. After the last search, STOP searching and immediately output the JSON array from what you have.`,
     opts.exclusions?.length
       ? `ALREADY TRACKED - these are in our pipeline; do NOT re-propose them, find NEW opportunities:\n${opts.exclusions
           .map((e) => `- ${e}`)
@@ -47,8 +65,9 @@ export async function runFinder(opts: {
     system,
     userMessage: user,
     model: MODELS.sonnet,
-    maxTokens: 16000,
-    webSearchMaxUses: opts.fast ? 6 : 10,
+    maxTokens: MAX_TOKENS,
+    webSearchMaxUses: searchBudget,
+    deadlineMs: opts.deadlineMs,
   });
 
   const usage: AgentUsage = {

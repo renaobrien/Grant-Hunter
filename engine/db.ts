@@ -88,6 +88,7 @@ export interface Settings {
   discovery_rounds: number;
   discovery_target_survivors: number;
   daily_budget_usd: number;
+  run_budget_usd: number;
   speed_mode: "thorough" | "fast";
   discovery_min_fit: number;
   discovery_min_alignment: number;
@@ -101,6 +102,7 @@ export async function loadSettings(sb: SupabaseClient): Promise<Settings> {
     discovery_rounds: data?.discovery_rounds ?? 2,
     discovery_target_survivors: data?.discovery_target_survivors ?? 5,
     daily_budget_usd: Number(data?.daily_budget_usd ?? 5),
+    run_budget_usd: Number(data?.run_budget_usd ?? 2),
     speed_mode: data?.speed_mode === "fast" ? "fast" : "thorough",
     discovery_min_fit: Number(data?.discovery_min_fit ?? 3),
     discovery_min_alignment: Number(data?.discovery_min_alignment ?? 3),
@@ -160,6 +162,10 @@ export async function finishRun(
     usage?: AgentUsage;
     output?: unknown;
     error?: string;
+    /** Fail-safe cost when the call died without usage data (SDK timeout,
+     * network, 5xx): record this conservative floor instead of null so the
+     * spend still counts against the daily cap. */
+    floorCents?: number;
   },
 ): Promise<void> {
   const cost = opts.usage
@@ -169,6 +175,8 @@ export async function finishRun(
         opts.usage.model,
         opts.usage.webSearchRequests ?? 0,
       )
+    : opts.status === "error"
+    ? opts.floorCents ?? null
     : null;
   const { error } = await sb
     .from("agent_runs")

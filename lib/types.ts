@@ -154,6 +154,7 @@ export interface SettingsRow {
   discovery_min_fit: number;
   discovery_min_alignment: number;
   daily_budget_usd: number;
+  run_budget_usd: number;
   preference_summary: string | null;
   weekly_cron: string;
   run_mode: RunMode;

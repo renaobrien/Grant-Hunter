@@ -5,6 +5,7 @@ import { saveSettings, regeneratePreferenceSummary } from "./actions";
 
 export interface SettingsFormInitial {
   daily_budget_usd: number;
+  run_budget_usd: number;
   discovery_rounds: number;
   discovery_target_survivors: number;
   discovery_min_fit: number;
@@ -19,6 +20,7 @@ export default function SettingsForm({
   initial: SettingsFormInitial;
 }) {
   const [budget, setBudget] = useState(String(initial.daily_budget_usd));
+  const [runBudget, setRunBudget] = useState(String(initial.run_budget_usd));
   const [rounds, setRounds] = useState(String(initial.discovery_rounds));
   const [survivors, setSurvivors] = useState(
     String(initial.discovery_target_survivors),
@@ -53,6 +55,7 @@ export default function SettingsForm({
     startTransition(async () => {
       const res = await saveSettings({
         daily_budget_usd: Number(budget),
+        run_budget_usd: Number(runBudget),
         discovery_rounds: Number(rounds),
         discovery_target_survivors: Number(survivors),
         discovery_min_fit: Number(minFit),
@@ -83,6 +86,22 @@ export default function SettingsForm({
             onChange={(e) => setBudget(e.target.value)}
           />
           <span className="field-hint">Hard cap on agent spend per day.</span>
+        </div>
+
+        <div className="field">
+          <label htmlFor="run_budget_usd">Per-run budget (USD)</label>
+          <input
+            id="run_budget_usd"
+            type="number"
+            min={0}
+            step={0.5}
+            inputMode="decimal"
+            value={runBudget}
+            onChange={(e) => setRunBudget(e.target.value)}
+          />
+          <span className="field-hint">
+            A discovery run stops once its spend reaches this.
+          </span>
         </div>
 
         <div className="field">

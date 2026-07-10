@@ -21,6 +21,10 @@ interface ClaudeOptions {
   model?: string;
   maxTokens?: number;
   webSearchMaxUses?: number;
+  /** Absolute epoch ms after which in-flight requests are aborted (e.g. the
+   * discovery run's wall-clock deadline). Bounds a wedged call to the run,
+   * not to the SDK timeout x retries. */
+  deadlineMs?: number;
 }
 
 export interface ClaudeResponse {
@@ -33,7 +37,10 @@ export interface ClaudeResponse {
 
 // The server-side web search loop pauses after ~10 iterations; resume by
 // echoing the assistant turn. Cap continuations so a pathological loop ends.
-const MAX_CONTINUATIONS = 4;
+// Every continuation re-sends the whole growing conversation (system + all
+// prior turns including web-search result blocks), so each extra one is the
+// most expensive call of the run. 2 is enough for a bounded search budget.
+const MAX_CONTINUATIONS = 2;
 
 // Strip em/en dashes from all model output so they never reach the compiled
 // profile, drafts, or UI. Safe to run before JSON.parse: dashes only ever
@@ -145,17 +152,17 @@ let cachedClient: Anthropic | null = null;
 let cachedKey = "";
 function getClient(apiKey: string): Anthropic {
   if (!cachedClient || cachedKey !== apiKey) {
-    // timeout: web-search-heavy Finder calls legitimately run past the SDK's
-    // ~10-minute default and were dying with "Request timed out." mid-run.
-    // 25 min covers a slow multi-search turn.
-    // maxRetries: the SDK retries 429 / 5xx / overloaded with exponential backoff
-    // + jitter. Bumped to 4 as more agents (distiller, requirements extractor)
-    // are added; engine calls run sequentially, so no concurrency limiter is
-    // needed on top of this.
+    // timeout: a real finder turn takes minutes, not tens of minutes. Calls
+    // that ran to the old 25-min ceiling were wedged, not working, and every
+    // wedged minute is billed web searches + tokens.
+    // maxRetries: each silent SDK retry re-runs the searches of the failed
+    // attempt and only the final attempt's usage is ever visible to the cost
+    // ledger. 1 bounds that invisible spend; the fail-safe floor cost in
+    // tracked() covers what remains.
     cachedClient = new Anthropic({
       apiKey,
-      maxRetries: 4,
-      timeout: 25 * 60 * 1000,
+      maxRetries: 1,
+      timeout: 6 * 60 * 1000,
     });
     cachedKey = apiKey;
   }
@@ -167,6 +174,10 @@ function webSearchTool(model: string, maxUses: number): Anthropic.Messages.ToolU
   const type = model.includes("haiku") ? "web_search_20250305" : "web_search_20260209";
   return { type, name: "web_search", max_uses: maxUses } as Anthropic.Messages.ToolUnion;
 }
+
+// Hard per-request wall clock. A single messages.create past this is aborted
+// via signal (aborts are NOT retried by the SDK, unlike its own timeout).
+const CALL_MAX_MS = 6 * 60 * 1000;
 
 export async function callClaude(options: ClaudeOptions): Promise<ClaudeResponse> {
   // Local model path: route to Ollama and skip everything Anthropic-specific
@@ -180,6 +191,7 @@ export async function callClaude(options: ClaudeOptions): Promise<ClaudeResponse
     model = MODELS.sonnet,
     maxTokens = 16000,
     webSearchMaxUses,
+    deadlineMs,
   } = options;
 
   const client = getClient(apiKey);
@@ -191,31 +203,75 @@ export async function callClaude(options: ClaudeOptions): Promise<ClaudeResponse
   let webSearchRequests = 0;
   const textParts: string[] = [];
   let stopReason = "";
+  const usage = () => ({ model, inputTokens, outputTokens, stopReason, webSearchRequests });
 
-  for (let attempt = 0; ; attempt++) {
-    const response = await client.messages.create({
-      model,
-      max_tokens: maxTokens,
-      system,
-      messages,
-      ...(tools ? { tools } : {}),
-    });
+  // Abort signal for one request: the per-call ceiling or whatever is left of
+  // the run's deadline, whichever comes first. Throws when the deadline has
+  // already passed so we never start a request we intend to kill.
+  const requestSignal = (): AbortSignal => {
+    const left = deadlineMs ? deadlineMs - Date.now() : Infinity;
+    if (left <= 0) {
+      throw Object.assign(new Error("Run deadline reached before the API call started."), {
+        usage: usage(),
+      });
+    }
+    return AbortSignal.timeout(Math.min(CALL_MAX_MS, left));
+  };
 
+  const createTurn = async (withTools: boolean) => {
+    const response = await client.messages.create(
+      {
+        model,
+        max_tokens: maxTokens,
+        system,
+        messages,
+        ...(withTools && tools ? { tools } : {}),
+      },
+      { signal: requestSignal() },
+    );
     inputTokens += response.usage.input_tokens;
     outputTokens += response.usage.output_tokens;
     const serverToolUse = (
       response.usage as { server_tool_use?: { web_search_requests?: number } }
     ).server_tool_use;
     webSearchRequests += serverToolUse?.web_search_requests ?? 0;
-
     for (const block of response.content) {
       if (block.type === "text" && block.text) textParts.push(block.text);
     }
     stopReason = response.stop_reason ?? "";
+    return response;
+  };
 
+  let lastResponse: Anthropic.Message | null = null;
+  for (let attempt = 0; ; attempt++) {
+    lastResponse = await createTurn(true);
     if (stopReason !== "pause_turn" || attempt >= MAX_CONTINUATIONS) break;
     // Server paused mid tool loop - append the assistant turn as-is and resume.
-    messages.push({ role: "assistant", content: response.content });
+    messages.push({ role: "assistant", content: lastResponse.content });
+  }
+
+  // Salvage a searched-out turn: if the loop ended with no text (or still
+  // paused mid tool loop), the searches are already paid for. One last call
+  // with tools OFF forces the model to emit the answer from what it gathered,
+  // instead of throwing the whole run away with zero candidates.
+  if (tools && lastResponse && (!textParts.join("").trim() || stopReason === "pause_turn")) {
+    messages.push({ role: "assistant", content: lastResponse.content });
+    messages.push({
+      role: "user",
+      content:
+        "Stop searching. Output ONLY the final answer in the requested format, based on what you already have.",
+    });
+    try {
+      await createTurn(false);
+    } catch (e) {
+      // The nudge is best-effort: surface the original problem, billed.
+      if (!textParts.join("").trim()) {
+        throw Object.assign(
+          e instanceof Error ? e : new Error(String(e)),
+          { usage: usage() },
+        );
+      }
+    }
   }
 
   const text = stripFancyDashes(textParts.join("\n"));
@@ -226,7 +282,7 @@ export async function callClaude(options: ClaudeOptions): Promise<ClaudeResponse
       new Error(
         `No text in API response (stop_reason: ${stopReason}). Model may have exhausted tool calls without a summary.`,
       ),
-      { usage: { model, inputTokens, outputTokens, stopReason, webSearchRequests } },
+      { usage: usage() },
     );
   }
 
@@ -263,6 +319,31 @@ export function estimateCostCents(
     (outputTokens / 1_000_000) * outRate +
     webSearchRequests * 1;
   return Math.ceil(cents);
+}
+
+/**
+ * Worst-case cost of ONE callClaude in cents, for pre-flight budget checks and
+ * as the fail-safe cost recorded when a call dies without usage data. Assumes
+ * every allowed search runs, every turn re-sends the full grown conversation
+ * (~15k tokens per search result per turn + 10k base, roughly 2x the per-call
+ * actuals observed in agent_runs), and every turn emits maxTokens. Fat on
+ * purpose: the ledger must over-count on failure, never under-count.
+ */
+export function worstCaseCents(opts: {
+  model?: string;
+  maxTokens?: number;
+  webSearchMaxUses?: number;
+}): number {
+  if (isOllama()) return 0;
+  const model = opts.model ?? MODELS.sonnet;
+  const maxTokens = opts.maxTokens ?? 16000;
+  const searches = opts.webSearchMaxUses ?? 0;
+  // Continuation loop turns plus the tools-off nudge; plain calls are one turn.
+  const turns = searches > 0 ? MAX_CONTINUATIONS + 2 : 1;
+  const inputWorst = searches > 0 ? turns * (searches * 15_000 + 10_000) : 50_000;
+  const outputWorst = maxTokens * turns;
+  // Reuse the model rate table (searches already priced at 1c each there).
+  return estimateCostCents(inputWorst, outputWorst, model, searches);
 }
 
 /**

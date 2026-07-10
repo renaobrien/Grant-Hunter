@@ -77,7 +77,8 @@ Critic signs off, and the critique rounds stay attached:
 ![Application drafts panel with a ready draft and the two-round critique transcript: round 1 marked revise with issues, round 2 approved](docs/screenshots/draft.png)
 
 **Runs - every agent invocation, costed.** Tokens, duration, and dollars per step, plus
-the candidates that were cut before reaching the board and why:
+the candidates that were cut before reaching the board and why. What each agent runs on
+and what it costs: [docs/AGENTS.md](docs/AGENTS.md).
 
 ![Runs page showing a grouped discovery run with per-agent cost, and a recently cut candidate with the Skeptic's kill-shot reasoning](docs/screenshots/runs.png)
 

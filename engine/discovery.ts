@@ -5,9 +5,10 @@
 
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { runFinder } from "./agents/finder";
-import { runSkeptic } from "./agents/skeptic";
-import { runJudge } from "./agents/judge";
+import { estimateCostCents } from "./anthropic";
+import { finderWorstCaseCents, runFinder } from "./agents/finder";
+import { runSkeptic, skepticWorstCaseCents } from "./agents/skeptic";
+import { judgeWorstCaseCents, runJudge } from "./agents/judge";
 import {
   budgetRemainingCents,
   finishRun,
@@ -74,6 +75,7 @@ async function tracked<T extends { usage: AgentUsage }>(
   agentType: string,
   trigger: "scheduled" | "manual",
   input: unknown,
+  floorCents: number,
   fn: () => Promise<T>,
 ): Promise<T> {
   const run = await startRun(sb, agentType, trigger, input);
@@ -83,9 +85,12 @@ async function tracked<T extends { usage: AgentUsage }>(
     return r;
   } catch (e) {
     // Bill any usage the agent spent before it failed (e.g. tokens spent, then
-    // JSON parse threw) so a failing call can't slip under the daily cap.
+    // JSON parse threw) so a failing call can't slip under the daily cap. A
+    // call that died with NO usage (SDK timeout / network / 5xx) still ran its
+    // searches and generated tokens: record the worst-case floor, never null.
+    // This is why the ledger recorded $6 while Anthropic billed $16.50.
     const usage = (e as { usage?: AgentUsage }).usage;
-    await finishRun(sb, run, { status: "error", usage, error: (e as Error).message });
+    await finishRun(sb, run, { status: "error", usage, floorCents, error: (e as Error).message });
     throw e;
   }
 }
@@ -110,6 +115,9 @@ export async function runDiscovery(
   const runStartedMs = Date.now();
   const RUN_MAX_MS = 40 * 60 * 1000;
   const outOfTime = () => Date.now() - runStartedMs > RUN_MAX_MS;
+  // Passed into every agent call so an in-flight API request is aborted when
+  // the run is out of time, instead of grinding to the SDK timeout.
+  const deadlineMs = runStartedMs + RUN_MAX_MS;
   const summary: DiscoverySummary = {
     runId,
     rounds: 0,
@@ -127,18 +135,44 @@ export async function runDiscovery(
 
   let priorNotes: string | undefined;
   const fast = settings.speed_mode === "fast";
+
+  // Per-run spend ceiling (user-tunable, Settings -> Discovery). Bills each
+  // call's ACTUAL usage as it completes and stops the run once the ceiling is
+  // reached; the daily check refuses to start a call whose WORST case doesn't
+  // fit in what's left of the day. One run can no longer blow through the day's
+  // budget on unrecorded spend.
+  const runBudgetCents = Math.round(settings.run_budget_usd * 100);
+  let runSpentCents = 0;
+  const bill = (usage: AgentUsage) => {
+    runSpentCents += estimateCostCents(
+      usage.inputTokens,
+      usage.outputTokens,
+      usage.model,
+      usage.webSearchRequests ?? 0,
+    );
+  };
+  /** Reason to stop before spending on the next call, or null to proceed. */
+  const stopBefore = async (label: string, worstCents: number): Promise<string | null> => {
+    if (outOfTime()) return "hit the 40-minute run ceiling";
+    if (runSpentCents >= runBudgetCents) {
+      return `hit the $${settings.run_budget_usd}/run budget ($${(runSpentCents / 100).toFixed(2)} spent)`;
+    }
+    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) < worstCents) {
+      return `daily budget: not enough left for a worst-case ${label} call`;
+    }
+    return null;
+  };
+
   console.log(
     `[discovery] starting: up to ${settings.discovery_rounds} round(s), ` +
-      `target ${settings.discovery_target_survivors} survivor(s), ${fast ? "fast" : "thorough"} mode.`,
+      `target ${settings.discovery_target_survivors} survivor(s), ${fast ? "fast" : "thorough"} mode, ` +
+      `run budget $${settings.run_budget_usd}.`,
   );
 
   for (let round = 1; round <= settings.discovery_rounds; round++) {
-    if (outOfTime()) {
-      summary.stopped = "hit the 40-minute run ceiling";
-      break;
-    }
-    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) <= 0) {
-      summary.stopped = "hit daily budget mid-run";
+    const stopFinder = await stopBefore("finder", finderWorstCaseCents(fast));
+    if (stopFinder) {
+      summary.stopped = stopFinder;
       break;
     }
     summary.rounds = round;
@@ -154,9 +188,25 @@ export async function runDiscovery(
 
     // 1) Finder proposes
     console.log(`[discovery] round ${round}: finder searching the live web (can take a few minutes)…`);
-    const { candidates } = await tracked(sb, "finder", trigger, { round, runId }, () =>
-      runFinder({ apiKey: opts.apiKey, profile, preferenceContext, today, priorNotes, exclusions, fast }),
+    const { candidates, usage: finderUsage } = await tracked(
+      sb,
+      "finder",
+      trigger,
+      { round, runId },
+      finderWorstCaseCents(fast),
+      () =>
+        runFinder({
+          apiKey: opts.apiKey,
+          profile,
+          preferenceContext,
+          today,
+          priorNotes,
+          exclusions,
+          fast,
+          deadlineMs,
+        }),
     );
+    bill(finderUsage);
     if (!candidates.length) {
       summary.stopped = summary.stopped ?? "finder returned no candidates";
       console.log(`[discovery] round ${round}: finder found no new candidates.`);
@@ -164,30 +214,30 @@ export async function runDiscovery(
     }
     console.log(`[discovery] round ${round}: finder proposed ${candidates.length} candidate(s).`);
 
-    // Re-check the cap between agents: a single round runs Finder + Skeptic +
-    // Judge, each of which can spend real money, so one check at round start
-    // isn't enough to keep the daily cap honest.
-    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) <= 0) {
-      summary.stopped = "hit daily budget after finder";
-      break;
-    }
-    if (outOfTime()) {
-      summary.stopped = "hit the 40-minute run ceiling";
+    // Re-check between agents: a single round runs Finder + Skeptic + Judge,
+    // each of which can spend real money, so one check at round start isn't
+    // enough to keep either cap honest.
+    const stopSkeptic = await stopBefore("skeptic", skepticWorstCaseCents(fast));
+    if (stopSkeptic) {
+      summary.stopped = stopSkeptic;
       break;
     }
 
     // 2) Skeptic refutes
     console.log(`[discovery] round ${round}: skeptic vetting ${candidates.length} candidate(s)…`);
-    const { verdicts } = await tracked(sb, "skeptic", trigger, { round, runId, n: candidates.length }, () =>
-      runSkeptic({ apiKey: opts.apiKey, profile, candidates, fast }),
+    const { verdicts, usage: skepticUsage } = await tracked(
+      sb,
+      "skeptic",
+      trigger,
+      { round, runId, n: candidates.length },
+      skepticWorstCaseCents(fast),
+      () => runSkeptic({ apiKey: opts.apiKey, profile, candidates, fast, deadlineMs }),
     );
+    bill(skepticUsage);
 
-    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) <= 0) {
-      summary.stopped = "hit daily budget after skeptic";
-      break;
-    }
-    if (outOfTime()) {
-      summary.stopped = "hit the 40-minute run ceiling";
+    const stopJudge = await stopBefore("judge", judgeWorstCaseCents());
+    if (stopJudge) {
+      summary.stopped = stopJudge;
       break;
     }
     if (verdicts.length !== candidates.length) {
@@ -198,9 +248,15 @@ export async function runDiscovery(
 
     // 3) Judge reconciles
     console.log(`[discovery] round ${round}: judge scoring what survived…`);
-    const { rulings } = await tracked(sb, "judge", trigger, { round, runId, n: candidates.length }, () =>
-      runJudge({ apiKey: opts.apiKey, profile, candidates, verdicts, preferenceContext }),
+    const { rulings, usage: judgeUsage } = await tracked(
+      sb,
+      "judge",
+      trigger,
+      { round, runId, n: candidates.length },
+      judgeWorstCaseCents(),
+      () => runJudge({ apiKey: opts.apiKey, profile, candidates, verdicts, preferenceContext, deadlineMs }),
     );
+    bill(judgeUsage);
 
     // Match rulings to candidates by exact name first, falling back to position
     // when the Judge returned one ruling per candidate (it's instructed to keep
@@ -280,7 +336,8 @@ export async function runDiscovery(
 
   console.log(
     `[discovery] run ${runId}: ${summary.rounds} round(s), ${summary.created} new, ` +
-      `${summary.updated} updated, ${summary.skipped} skipped${summary.stopped ? ` (${summary.stopped})` : ""}.`,
+      `${summary.updated} updated, ${summary.skipped} skipped, ` +
+      `~$${(runSpentCents / 100).toFixed(2)} spent${summary.stopped ? ` (${summary.stopped})` : ""}.`,
   );
   return summary;
 }

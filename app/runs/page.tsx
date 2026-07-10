@@ -10,6 +10,8 @@ import Elapsed from "@/components/Elapsed";
 import BoardAutoRefresh from "@/components/BoardAutoRefresh";
 import RunLog from "@/components/RunLog";
 import SpendSummary from "@/components/SpendSummary";
+import AgentInfo from "@/components/AgentInfo";
+import { AGENT_INFO } from "@/lib/agent-info";
 import { sweepStaleRuns, tailLog } from "@/lib/run-control";
 import type { AgentRunRow, DebateRow } from "@/lib/types";
 
@@ -183,6 +185,7 @@ export default async function RunsPage() {
       <BoardAutoRefresh active={hasRunning} />
       <div className="page-head">
         <h1>Runs</h1>
+        <AgentInfo />
       </div>
 
       <SpendSummary />
@@ -263,9 +266,14 @@ export default async function RunsPage() {
                 return (
                   <tr key={v.key}>
                     <td className="nowrap">
-                      <strong>{v.label}</strong>
+                      <strong title={AGENT_INFO[v.label]?.role}>
+                        {AGENT_INFO[v.label]?.label ?? v.label}
+                      </strong>
                       {v.running && v.runningAgent ? (
-                        <span className="muted"> · {v.runningAgent}</span>
+                        <span className="muted" title={AGENT_INFO[v.runningAgent]?.role}>
+                          {" "}
+                          · {AGENT_INFO[v.runningAgent]?.label ?? v.runningAgent}
+                        </span>
                       ) : null}
                     </td>
                     <td className="nowrap">
