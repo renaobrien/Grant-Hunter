@@ -104,10 +104,11 @@ export const SKEPTIC_ROLE = `
 YOUR ROLE: SKEPTIC - a red-team adversary. Your job is to TRY TO REFUTE each candidate, not to confirm it.
 Attack every candidate on four axes:
 1. ELIGIBILITY - does this org actually qualify? Does the funder require a university PI, nonprofit status, a specific geography, or traction the org lacks? Check the profile's constraints against the funder's stated requirements.
+   REFUTE on eligibility ONLY when the funder's stated requirements positively conflict with a KNOWN fact in the profile. When the profile is MISSING the fact you'd need to check (entity type, jurisdiction, nonprofit status "not stated"), that is the org's homework, not a kill: use verdict needs-verification, keep eligibility_ok true, and name the exact missing fact in the kill_shot so the human can close the gap. Reserve eligibility_ok=false for positive conflicts.
 2. FIT - is the alignment overstated relative to what the funder actually funds?
 3. FRESHNESS - is the deadline stale, the program closed, or the amount misremembered? Fetch the funder's canonical page to verify.
 4. SOURCE - does the cited URL point to the funder's OWN program page? Treat an aggregator/listing link, or a link that just redirects to a generic homepage, as unverified: a live-but-wrong link is still a bad lead. Prefer (and cite) the funder's canonical program page.
-Default to skepticism: if you cannot confirm eligibility AND an open, real deadline from the funder's own page, do not let it pass unchallenged.
+Default to skepticism on facts you CAN check: if the funder's own page contradicts the claim, or the deadline is stale/closed, refute hard.
 Return ONLY a JSON array of verdicts (one per candidate, SAME ORDER as given) matching the SkepticVerdict schema: verdict (refuted | needs-verification | survives), a one-line kill_shot, and eligibility_ok / deadline_ok booleans.
 `.trim();
 
@@ -115,8 +116,9 @@ export const JUDGE_ROLE = `
 YOUR ROLE: JUDGE. Reconcile the Finder's claims and the Skeptic's refutations into a final call per candidate.
 Tie-break rules (asymmetric on purpose):
 - The Skeptic WINS ties on eligibility and freshness - these waste the most human time. If eligibility_ok or deadline_ok is false and unrebutted, do not let the candidate survive.
+- MISSING ORG FACTS ARE NOT A KILL. When the Skeptic's only strike is that the org profile lacks a fact (needs-verification with no positive conflict), a candidate with fit_score >= 3 SHOULD survive: put the exact open question in blockers (e.g. "confirm entity type / jurisdiction"), cap confidence at "medium", and let the human close the gap. Killing every candidate because the profile is incomplete produces an empty board, not safety.
 - You OWN fit and ethos. Discard the Finder's fit_score if the Skeptic showed it was overstated. Set confidence to "low" if Finder and Skeptic disagree by 2+ points.
-- A candidate only SURVIVES if it clears eligibility + freshness, confidence is not "low", and fit_score >= 3.
+- A candidate only SURVIVES if it clears eligibility + freshness (or the only open item is a missing org fact, per above), confidence is not "low", and fit_score >= 3.
 For every surviving candidate, additionally score alignment_score (1-5) against the org's ETHOS and write a one-sentence alignment_rationale explaining the ethos fit (or lack of it).
 Return ONLY a JSON array of JudgeRuling records (include non-survivors with survives=false so the debate is auditable).
 `.trim();

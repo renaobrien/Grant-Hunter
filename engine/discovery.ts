@@ -161,8 +161,13 @@ export async function runDiscovery(
     if (runSpentCents >= runBudgetCents) {
       return `hit the $${settings.run_budget_usd}/run budget ($${(runSpentCents / 100).toFixed(2)} spent)`;
     }
-    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) < finderWorstCaseCents(fast)) {
-      return "daily budget: not enough left for a worst-case finder call";
+    // Require headroom for the whole round's expensive calls (finder AND
+    // skeptic), not just the finder. Starting a round that can only afford its
+    // first call pays for search work and then strands it - observed live as
+    // $0.80 runs with zero output.
+    const roundWorst = finderWorstCaseCents(fast) + skepticWorstCaseCents(fast);
+    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) < roundWorst) {
+      return "daily budget: not enough left to finish a worst-case round";
     }
     return null;
   };
@@ -226,14 +231,31 @@ export async function runDiscovery(
       break;
     }
 
-    // Cheap deterministic cull: the Finder self-scores fit, and anything below
-    // the operator's floor is dead on arrival at the quality gate anyway. Drop
-    // it here, in code, instead of paying the Opus Skeptic to confirm it.
+    // Cheap deterministic culls before any more money is spent:
+    // 1) Exclusion dedup. The Finder is TOLD not to re-propose tracked or
+    //    already-killed candidates, but a model instruction is not a guarantee -
+    //    observed live: the same two dead candidates re-proposed and re-billed
+    //    through Opus twice in one afternoon. Enforce it in code.
+    // 2) Fit floor. The Finder self-scores fit; anything below the operator's
+    //    floor is dead on arrival at the quality gate anyway.
+    const norm = (s?: string | null) => (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    const excluded = new Set(exclusions.map(norm));
+    const label = (c: Candidate) => `${c.funder ?? ""} - ${c.program_name ?? ""}`;
+    const isRepeat = (c: Candidate) => excluded.has(norm(label(c)));
+    const repeats = proposed.filter(isRepeat);
+    if (repeats.length) {
+      summary.skipped += repeats.length;
+      console.log(
+        `[discovery] round ${round}: dropped ${repeats.length} re-proposed candidate(s) already tried or tracked: ${repeats
+          .map(label)
+          .join("; ")}`,
+      );
+    }
     const minFit = settings.discovery_min_fit;
     const isWeak = (c: Candidate) => Number.isFinite(c.fit_score) && c.fit_score < minFit;
-    const candidates = proposed.filter((c) => !isWeak(c));
+    const candidates = proposed.filter((c) => !isRepeat(c) && !isWeak(c));
     const weakNotes = proposed
-      .filter(isWeak)
+      .filter((c) => !isRepeat(c) && isWeak(c))
       .map((c) => `- ${c.funder} - ${c.program_name}: self-scored fit ${c.fit_score}, below the floor of ${minFit}`);
     if (weakNotes.length) {
       summary.skipped += weakNotes.length;
@@ -242,10 +264,13 @@ export async function runDiscovery(
       );
     }
     if (!candidates.length) {
-      priorNotes = `Every candidate self-scored below the fit floor (${minFit}). Search materially different funders and angles:\n${weakNotes
-        .slice(0, 8)
-        .join("\n")}`;
-      console.log(`[discovery] round ${round}: nothing above the fit floor - trying a different angle.`);
+      const why = repeats.length
+        ? `Every candidate was already tried or tracked (${repeats.map(label).join("; ")}). Propose funders NOT in the exclusion list.`
+        : `Every candidate self-scored below the fit floor (${minFit}). Search materially different funders and angles:\n${weakNotes
+            .slice(0, 8)
+            .join("\n")}`;
+      priorNotes = why;
+      console.log(`[discovery] round ${round}: nothing new worth vetting - trying a different angle.`);
       continue;
     }
     console.log(

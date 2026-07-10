@@ -10,6 +10,7 @@ import {
 import { Chip, ScorePips, EmptyState, type ChipTone } from "@/components/ui";
 import { deadlinePassed, checkedAgo, daysUntilDeadline } from "@/lib/freshness";
 import RunDiscoveryButton from "@/components/RunDiscoveryButton";
+import ProfileGapsNotice from "@/components/ProfileGapsNotice";
 import StopDiscoveryButton from "@/components/StopDiscoveryButton";
 import HideClosedToggle from "@/components/HideClosedToggle";
 import BoardAutoRefresh from "@/components/BoardAutoRefresh";
@@ -107,6 +108,8 @@ export default async function BoardPage() {
         </div>
         <HideClosedToggle hidden={hideClosed} />
       </div>
+
+      <ProfileGapsNotice />
 
       {needRating > 0 || dueSoon > 0 ? (
         <div className="attention-strip">

@@ -247,11 +247,26 @@ export async function loadRejectedLabels(
   sb: SupabaseClient,
   limit = 40,
 ): Promise<string[]> {
-  const { data, error } = await sb
+  // Rejections older than the last profile edit are stale: verdicts reached
+  // against a different (often less complete) profile must not blacklist
+  // candidates forever. Real case: an empty jurisdiction field got perfect-fit
+  // grants refuted as "unverifiable"; filling the profile in has to make them
+  // retriable.
+  let sinceIso: string | null = null;
+  const { data: prof } = await sb
+    .from("profile")
+    .select("updated_at")
+    .eq("id", 1)
+    .maybeSingle();
+  sinceIso = (prof?.updated_at as string | null) ?? null;
+
+  let q = sb
     .from("agent_debate")
     .select("finder_claim, skeptic_verdict, judge_ruling")
     .order("created_at", { ascending: false })
     .limit(400);
+  if (sinceIso) q = q.gte("created_at", sinceIso);
+  const { data, error } = await q;
   if (error) return []; // best-effort: never block a run on this
   const labels = new Set<string>();
   for (const row of data ?? []) {
