@@ -65,6 +65,7 @@ export default async function BoardPage() {
     .select(
       "id, funder, program_name, amount, deadline, fit_score, alignment_score, recommendation, confidence, blockers, status, last_verified, human_score",
     )
+    .is("deleted_at", null)
     .order("fit_score", { ascending: false, nullsFirst: false })
     .order("date_added", { ascending: false });
 

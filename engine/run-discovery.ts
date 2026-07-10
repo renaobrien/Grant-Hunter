@@ -31,6 +31,7 @@ async function main(): Promise<void> {
       const { data } = await sb
         .from("grants")
         .select("funder, program_name, fit_score, deadline, amount")
+        .is("deleted_at", null)
         .order("date_added", { ascending: false })
         .limit(5);
       const recent = (data ?? []) as RecentGrant[];

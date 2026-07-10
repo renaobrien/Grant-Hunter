@@ -148,6 +148,24 @@ export async function setOutcome(
   return { ok: true };
 }
 
+/**
+ * Soft-delete a grant. It disappears from the board, digests, and sweeps, but
+ * the row is kept as a tombstone: discovery's dedup index still sees it, so
+ * the Finder is told not to re-propose it, re-proposals are dropped in code,
+ * and upsertRuling refuses to revive it. Unlike agent rejections (which expire
+ * when the profile changes), a human delete is permanent.
+ */
+export async function deleteGrant(grantId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("grants")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", grantId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/");
+  return { ok: true };
+}
+
 /** Save the operator's free-text notes (human-owned; the engine never writes here). */
 export async function saveHumanNotes(
   grantId: string,

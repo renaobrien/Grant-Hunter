@@ -24,6 +24,7 @@ import HumanNotes from "./HumanNotes";
 import ApplicationSpec from "./ApplicationSpec";
 import OutcomeForm from "./OutcomeForm";
 import DraftPanel, { type DraftWithRounds } from "./DraftPanel";
+import DeleteGrantButton from "@/components/DeleteGrantButton";
 
 export const dynamic = "force-dynamic";
 
@@ -289,9 +290,12 @@ export default async function GrantDetailPage({
             ) : null}
           </div>
         </div>
-        <Link href="/" className="btn btn-sm">
-          ← Board
-        </Link>
+        <div className="row" style={{ gap: "var(--s2)" }}>
+          <Link href="/" className="btn btn-sm">
+            ← Board
+          </Link>
+          <DeleteGrantButton grantId={grant.id} />
+        </div>
       </div>
 
       <div className="stack">

@@ -176,6 +176,24 @@ links are fetched and verified before a grant reaches your board, so dead 404 pa
 cut. Since you use your own API key, a runaway only ever touches your own bill - and the
 caps stop it first. Per-agent models and costs: [docs/AGENTS.md](docs/AGENTS.md).
 
+### Caveats over silent kills
+
+The agents never quietly eat a borderline grant - uncertainty comes to you, with a
+warning, so your rating trains the system:
+
+- **"Verify first" chip** on a board card means the agents weren't sure (low confidence,
+  or an open blocker like "confirm entity type"). Hover it for the exact question; the
+  full reasoning is on the grant's detail page.
+- **Profile gaps banner** on the board and Runs page appears when your profile is
+  missing entity type or jurisdiction - funders decide eligibility on exactly those, so
+  candidates carry blockers until you fill them in under Profile.
+- **A blocked Start button explains itself** (budget spent, headroom too small) instead
+  of silently doing nothing. The Spend panel warns from 75% of the daily budget.
+- Agent rejections **expire when you edit your profile** (old verdicts were made against
+  an older org description). Your own actions don't: rating a grant 1-2 keeps it off the
+  board, and **Delete** (on the grant page) removes it permanently - discovery will
+  never re-propose a deleted grant.
+
 ## Roadmap
 
 What's next, in priority order - cost-per-survivor metrics, persisted cull memory, run

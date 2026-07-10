@@ -550,6 +550,15 @@ main {
   padding: var(--s1) var(--s2);
   font-size: 0.8rem;
 }
+.btn-danger {
+  background: var(--tone-bad);
+  border-color: var(--tone-bad);
+  color: #fff;
+}
+.btn-danger:hover {
+  background: color-mix(in srgb, var(--tone-bad) 88%, black);
+  border-color: color-mix(in srgb, var(--tone-bad) 88%, black);
+}
 
 /* ---- form controls ---- */
 label {

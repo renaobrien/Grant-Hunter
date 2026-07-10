@@ -23,6 +23,9 @@ export type {
 export interface GrantRow {
   id: string;
   legacy_sheet_id: string | null;
+  /** Soft delete: hidden everywhere user-facing, kept for dedup so discovery
+   * never resurfaces it. Set by deleteGrant. */
+  deleted_at: string | null;
   human_score: number | null;
   rejection_reason: RejectionReason | null;
   date_added: string | null;

@@ -38,7 +38,7 @@ export default async function HealthHeader() {
       // so the header always agrees with what the engine will actually do.
       supabase.rpc("spent_cents_today"),
       supabase.from("settings").select("daily_budget_usd").eq("id", 1).maybeSingle(),
-      supabase.from("grants").select("id", { count: "exact", head: true }),
+      supabase.from("grants").select("id", { count: "exact", head: true }).is("deleted_at", null),
     ]);
 
     lastRun = lastRunRes.data?.started_at ?? null;

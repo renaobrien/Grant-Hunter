@@ -136,6 +136,12 @@ grants) - or paste your website and let the AI draft the answers for you to edit
 compiles them into your **profile** - the "voice" every agent uses. Edit it any time under
 **Profile**. (Terminal fans: `npm run onboard` is the same interview in the CLI.)
 
+**Entity type and jurisdiction matter most.** Funders decide eligibility on your legal
+form and country before anything else. If either is missing (easy to do when the AI
+prefills from your website and the site doesn't state them), the app shows a warning
+banner on your board, and every grant carries a "confirm eligibility" blocker until you
+fill them in under **Profile**.
+
 **The "what to avoid" answer matters as much as "what to fund."** Whatever you list here
 becomes the agents' do-not-surface list (stored as `anti_patterns` + `eligibility_constraints`
 in your profile), so be concrete. Examples of what to rule out:
@@ -155,6 +161,12 @@ same list automatically.
 Everything runs from your own machine - no GitHub or hosting required. With the app open
 (`npm run dev`), hit **Run discovery now** on the board or the Runs page; it confirms the
 spend, kicks off the agents, and results land on the board as they're found.
+
+What to expect on the board: cards the agents weren't sure about wear a **"Verify
+first"** chip (hover it for the open question) - rate them 1-5 and the agents learn from
+you. A grant you never want to see again: open it and hit **Delete** - it's permanent,
+and discovery will not re-propose it. If the Start button refuses, it tells you why
+(usually budget headroom) and what to change.
 
 Terminal equivalents, if you prefer them:
 

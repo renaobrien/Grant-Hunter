@@ -7,6 +7,19 @@ scores what survives. Survivors pass a deterministic quality gate and a
 dead-link check before reaching the board. A run does up to 2 rounds by
 default and stops early once it has enough survivors.
 
+The debate kills on **positive conflicts only** - a funder requirement the org
+provably fails, a stale deadline, a fit below your floor. **Uncertainty is
+never a kill**: a low-confidence candidate, or one blocked only by a missing
+profile fact (entity type, jurisdiction), reaches the board wearing a
+"Verify first" chip with the open question in its blockers, so the human
+decides and their 1-5 rating trains the loop. Three memories keep re-runs
+honest: agent rejections expire whenever the profile is edited (old verdicts
+were made against an older org description), human ratings of 1-2 keep a
+grant off the board permanently, and **deleted grants are tombstoned** - they
+leave the board but stay in the dedup index so discovery never re-proposes
+them. Re-proposals the Finder attempts anyway are dropped in code before the
+Skeptic spends anything.
+
 Every agent call is logged to `agent_runs` with its estimated cost
 (`cost_cents`). That ledger drives two spend caps: the **daily budget** and
 the **per-run budget** (both under Settings, Discovery & budget). Before each

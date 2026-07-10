@@ -100,6 +100,7 @@ async function sweepDeadlines(
       "id, funder, program_name, deadline, application_url, source_url, last_deadline_ping, status, human_score, rejection_reason",
     )
     .in("status", ["found", "drafting"])
+    .is("deleted_at", null)
     .not("deadline", "is", null);
   if (error) throw new Error(`could not load grants for deadline sweep: ${error.message}`);
 
@@ -187,6 +188,7 @@ async function sweepStaleLinks(
       "id, funder, program_name, status, human_score, rejection_reason, application_url, source_url, dead_link_strikes",
     )
     .in("status", ["found", "drafting"])
+    .is("deleted_at", null)
     // Oldest verification first (never-verified rows sort first).
     .order("last_verified", { ascending: true, nullsFirst: true })
     .limit(LINK_SWEEP_BATCH);

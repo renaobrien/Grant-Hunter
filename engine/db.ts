@@ -218,6 +218,7 @@ interface GrantIndexRow {
   source_url: string | null;
   application_url: string | null;
   human_score: number | null;
+  deleted_at: string | null;
 }
 
 const isHttp = (u?: string | null) => !!u && /^https?:\/\//i.test(u);
@@ -285,9 +286,11 @@ export async function loadRejectedLabels(
 }
 
 export async function loadGrantsIndex(sb: SupabaseClient): Promise<GrantIndexRow[]> {
+  // Deleted grants stay IN the index on purpose: they feed the Finder's
+  // exclusion list and let upsertRuling refuse to revive them.
   const { data, error } = await sb
     .from("grants")
-    .select("id, funder, program_name, source_url, application_url, human_score");
+    .select("id, funder, program_name, source_url, application_url, human_score, deleted_at");
   // Fail loudly: an empty index from a silent error would disable dedup AND the
   // "don't resurface human-rejected grants" protection.
   if (error) throw new Error(`Could not load grants index: ${error.message}`);
@@ -318,7 +321,9 @@ export async function upsertRuling(
 ): Promise<UpsertResult> {
   const existing = findMatch(index, r);
 
-  if (existing && existing.human_score != null && existing.human_score <= 2) {
+  // Never revive what a human removed or rejected: a deleted grant stays
+  // deleted, and a grant scored <= 2 stays off the board.
+  if (existing && (existing.deleted_at || (existing.human_score != null && existing.human_score <= 2))) {
     return { action: "skipped" };
   }
 
@@ -362,6 +367,7 @@ export async function upsertRuling(
     source_url: fields.source_url,
     application_url: fields.application_url,
     human_score: null,
+    deleted_at: null,
   });
   return { action: "created", id: data!.id };
 }
