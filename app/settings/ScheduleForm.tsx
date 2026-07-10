@@ -3,7 +3,7 @@
 // Editable weekly run schedule. Stored as UTC cron in settings.weekly_cron;
 // the picker shows a live "that's X in your local time" preview so nobody has
 // to do timezone math.
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { saveSchedule } from "./actions";
 
 const DAYS: { value: string; label: string }[] = [
@@ -48,6 +48,11 @@ export default function ScheduleForm({
   );
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // The preview is the viewer's LOCAL time and locale. Rendering it during SSR
+  // mismatches the browser (Node's ICU prints "AM", the browser "a.m."), so
+  // compute it only after mount - server + first client paint both show "UTC".
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const [hour, minute] = time.split(":").map((n) => parseInt(n, 10));
 
@@ -56,6 +61,7 @@ export default function ScheduleForm({
   // when the UTC/local boundary shifts it (so "Mondays 00:30 UTC" doesn't
   // silently mean Sunday where the user lives).
   const localPreview = useMemo(() => {
+    if (!mounted) return null;
     if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
     const now = new Date();
     const utc = new Date(
@@ -72,7 +78,7 @@ export default function ScheduleForm({
     const dayLabel =
       delta !== 0 && dow !== "*" ? DAY_NAMES[((Number(dow) + delta) % 7 + 7) % 7] : null;
     return { time, dayLabel };
-  }, [hour, minute, dow]);
+  }, [mounted, hour, minute, dow]);
 
   function save() {
     setMsg(null);
