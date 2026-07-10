@@ -54,7 +54,8 @@ export async function runFinder(opts: {
     opts.priorNotes
       ? `PRIOR ROUND FEEDBACK - search DIFFERENTLY to address these; do not re-propose what was already refuted:\n${opts.priorNotes}`
       : "",
-    `Find up to ${count} currently-open or upcoming opportunities that fit. Verify deadline, amount, and eligibility on each funder's own page.`,
+    `Spend your searches on DISCOVERY BREADTH - a different angle each search (grant databases, funder directories, program announcements, ecosystem lists). Do NOT burn searches deep-verifying individual candidates; a dedicated fact-checking agent vets every proposal right after you.`,
+    `Find up to ${count} currently-open or upcoming opportunities that fit. Only propose candidates you would score fit 3 or higher - fewer good candidates beat a padded list. Report deadline, amount, and eligibility from what your searches surfaced, and mark anything unverified as "unknown".`,
     SCHEMA,
   ]
     .filter(Boolean)

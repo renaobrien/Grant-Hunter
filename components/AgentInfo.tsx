@@ -38,9 +38,10 @@ export default function AgentInfo() {
       </div>
       <p className="muted" style={{ marginBottom: 0 }}>
         Estimates at list price. A discovery run is Finder, Skeptic, Judge for
-        up to 2 rounds; it stops early once it has enough survivors, once its
-        spend reaches your per-run budget, or when a worst-case call no longer
-        fits in the daily budget.
+        up to 2 rounds. It stops starting new rounds once it has enough
+        survivors, once spend reaches your per-run budget, or when a worst-case
+        call no longer fits in the daily budget - but a started round always
+        finishes, so paid-for searches become judged results.
       </p>
     </details>
   );

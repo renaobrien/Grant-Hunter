@@ -100,7 +100,8 @@ export default function SettingsForm({
             onChange={(e) => setRunBudget(e.target.value)}
           />
           <span className="field-hint">
-            A discovery run stops once its spend reaches this.
+            No new debate rounds once a run&rsquo;s spend reaches this. A started
+            round always finishes, so paid-for searches become results.
           </span>
         </div>
 

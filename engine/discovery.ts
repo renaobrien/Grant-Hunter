@@ -151,14 +151,27 @@ export async function runDiscovery(
       usage.webSearchRequests ?? 0,
     );
   };
-  /** Reason to stop before spending on the next call, or null to proceed. */
-  const stopBefore = async (label: string, worstCents: number): Promise<string | null> => {
+  /** Reason to stop before starting a NEW round, or null to proceed. The run
+   * budget only gates new rounds: once a round has started, its Finder/Skeptic
+   * spend is sunk and the Judge that turns it into board results is the
+   * cheapest of the three calls - stopping mid-round pays for the work and
+   * then discards it (a $2 run with zero output). */
+  const stopBeforeRound = async (): Promise<string | null> => {
     if (outOfTime()) return "hit the 40-minute run ceiling";
     if (runSpentCents >= runBudgetCents) {
       return `hit the $${settings.run_budget_usd}/run budget ($${(runSpentCents / 100).toFixed(2)} spent)`;
     }
-    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) < worstCents) {
-      return `daily budget: not enough left for a worst-case ${label} call`;
+    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) < finderWorstCaseCents(fast)) {
+      return "daily budget: not enough left for a worst-case finder call";
+    }
+    return null;
+  };
+  /** The daily cap is a hard promise, so it can still stop a round before the
+   * expensive Skeptic. The run budget cannot (see stopBeforeRound). */
+  const stopBeforeSkeptic = async (): Promise<string | null> => {
+    if (outOfTime()) return "hit the 40-minute run ceiling";
+    if ((await budgetRemainingCents(sb, settings.daily_budget_usd)) < skepticWorstCaseCents(fast)) {
+      return "daily budget: not enough left for a worst-case skeptic call";
     }
     return null;
   };
@@ -170,9 +183,9 @@ export async function runDiscovery(
   );
 
   for (let round = 1; round <= settings.discovery_rounds; round++) {
-    const stopFinder = await stopBefore("finder", finderWorstCaseCents(fast));
-    if (stopFinder) {
-      summary.stopped = stopFinder;
+    const stopRound = await stopBeforeRound();
+    if (stopRound) {
+      summary.stopped = stopRound;
       break;
     }
     summary.rounds = round;
@@ -188,7 +201,7 @@ export async function runDiscovery(
 
     // 1) Finder proposes
     console.log(`[discovery] round ${round}: finder searching the live web (can take a few minutes)…`);
-    const { candidates, usage: finderUsage } = await tracked(
+    const { candidates: proposed, usage: finderUsage } = await tracked(
       sb,
       "finder",
       trigger,
@@ -207,17 +220,41 @@ export async function runDiscovery(
         }),
     );
     bill(finderUsage);
-    if (!candidates.length) {
+    if (!proposed.length) {
       summary.stopped = summary.stopped ?? "finder returned no candidates";
       console.log(`[discovery] round ${round}: finder found no new candidates.`);
       break;
     }
-    console.log(`[discovery] round ${round}: finder proposed ${candidates.length} candidate(s).`);
 
-    // Re-check between agents: a single round runs Finder + Skeptic + Judge,
-    // each of which can spend real money, so one check at round start isn't
-    // enough to keep either cap honest.
-    const stopSkeptic = await stopBefore("skeptic", skepticWorstCaseCents(fast));
+    // Cheap deterministic cull: the Finder self-scores fit, and anything below
+    // the operator's floor is dead on arrival at the quality gate anyway. Drop
+    // it here, in code, instead of paying the Opus Skeptic to confirm it.
+    const minFit = settings.discovery_min_fit;
+    const isWeak = (c: Candidate) => Number.isFinite(c.fit_score) && c.fit_score < minFit;
+    const candidates = proposed.filter((c) => !isWeak(c));
+    const weakNotes = proposed
+      .filter(isWeak)
+      .map((c) => `- ${c.funder} - ${c.program_name}: self-scored fit ${c.fit_score}, below the floor of ${minFit}`);
+    if (weakNotes.length) {
+      summary.skipped += weakNotes.length;
+      console.log(
+        `[discovery] round ${round}: dropped ${weakNotes.length} candidate(s) below fit ${minFit} before vetting (no Skeptic cost).`,
+      );
+    }
+    if (!candidates.length) {
+      priorNotes = `Every candidate self-scored below the fit floor (${minFit}). Search materially different funders and angles:\n${weakNotes
+        .slice(0, 8)
+        .join("\n")}`;
+      console.log(`[discovery] round ${round}: nothing above the fit floor - trying a different angle.`);
+      continue;
+    }
+    console.log(
+      `[discovery] round ${round}: finder proposed ${proposed.length} candidate(s), ${candidates.length} worth vetting.`,
+    );
+
+    // The daily cap (a hard promise) can still stop the round before the
+    // expensive Skeptic; the run budget only gates new rounds.
+    const stopSkeptic = await stopBeforeSkeptic();
     if (stopSkeptic) {
       summary.stopped = stopSkeptic;
       break;
@@ -235,11 +272,9 @@ export async function runDiscovery(
     );
     bill(skepticUsage);
 
-    const stopJudge = await stopBefore("judge", judgeWorstCaseCents());
-    if (stopJudge) {
-      summary.stopped = stopJudge;
-      break;
-    }
+    // No stop before the Judge, ever: it is the cheapest call of the round and
+    // the one that converts the Finder/Skeptic spend into board results.
+    // Stopping here is how a $2 run ends with zero candidates.
     if (verdicts.length !== candidates.length) {
       console.warn(
         `[discovery] skeptic returned ${verdicts.length} verdicts for ${candidates.length} candidates - order-based matching may be off.`,
@@ -323,14 +358,25 @@ export async function runDiscovery(
       break;
     }
 
-    // feed the next Finder round what got refuted so it searches differently
+    // Feed the next Finder round everything that died - skeptic refutations,
+    // judge cuts, and fit-floor culls - so it searches differently instead of
+    // re-proposing near-misses of the same shape.
     const refuted = candidates
       .map((c, i) => ({ c, v: verdictFor(i) }))
       .filter((x) => x.v && x.v.verdict === "refuted")
-      .slice(0, 8)
       .map((x) => `- ${x.c.funder} - ${x.c.program_name}: ${x.v!.kill_shot}`);
-    priorNotes = refuted.length
-      ? `Already refuted (do not re-propose; search new funders/angles):\n${refuted.join("\n")}`
+    const judgeCuts = candidates
+      .map((c, i) => ({ c, r: rulingFor(c, i), v: verdictFor(i) }))
+      .filter((x) => x.r?.survives === false && x.v?.verdict !== "refuted")
+      .map(
+        (x) =>
+          `- ${x.c.funder} - ${x.c.program_name}: judge cut (${String(
+            x.r!.blockers || x.r!.notes || "poor fit",
+          ).slice(0, 140)})`,
+      );
+    const lessons = [...refuted, ...judgeCuts, ...weakNotes].slice(0, 8);
+    priorNotes = lessons.length
+      ? `Already refuted or cut (do not re-propose; search new funders/angles):\n${lessons.join("\n")}`
       : undefined;
   }
 
