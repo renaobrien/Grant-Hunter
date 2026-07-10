@@ -12,21 +12,39 @@ import BoardAutoRefresh from "@/components/BoardAutoRefresh";
 import RunLog from "@/components/RunLog";
 import SpendSummary from "@/components/SpendSummary";
 import { sweepStaleRuns, tailLog } from "@/lib/run-control";
-import type { AgentRunRow, AgentRunStatus, DebateRow } from "@/lib/types";
+import type { AgentRunRow, DebateRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_TONE: Record<AgentRunStatus, ChipTone> = {
-  running: "info",
-  success: "good",
-  error: "bad",
-};
+// A run's outcome, cleaned up for humans. A user cancel and a timeout are not
+// "errors", so the history isn't a wall of red.
+interface RunOutcome {
+  label: string;
+  tone: ChipTone;
+}
+function classifyRun(status: string, message: string | null): RunOutcome {
+  if (status === "running") return { label: "Running", tone: "info" };
+  if (status === "success") return { label: "Done", tone: "good" };
+  const m = (message ?? "").toLowerCase();
+  if (/stopped by user|cancel/.test(m)) return { label: "Canceled", tone: "neutral" };
+  if (/marked stale|ceiling|timed out|timeout/.test(m)) return { label: "Timed out", tone: "warn" };
+  return { label: "Error", tone: "bad" };
+}
 
-const STATUS_LABEL: Record<AgentRunStatus, string> = {
-  running: "Running",
-  success: "Success",
-  error: "Error",
-};
+// Turn a raw error (which can be an entire 502 HTML page) into one short line.
+// Canceled/timeout are conveyed by the chip, so they return null here. The full
+// original still rides along in the row's title attribute.
+function humanizeError(status: string, message: string | null): string | null {
+  if (status !== "error" || !message) return null;
+  const clean = message.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (/stopped by user|cancel/i.test(clean)) return null;
+  if (/marked stale|ceiling|timed out|timeout/i.test(clean)) return null;
+  if (/502|bad gateway/i.test(clean))
+    return "Provider returned 502 (busy). Retried, then gave up - try again later.";
+  if (/503|service unavailable/i.test(clean)) return "Provider unavailable (503) - try again later.";
+  if (/429|rate limit|overloaded/i.test(clean)) return "Rate limited by the provider - try again later.";
+  return clean.length > 80 ? `${clean.slice(0, 79)}…` : clean;
+}
 
 function formatDuration(ms: number | null): string {
   if (ms == null) return "-";
@@ -42,12 +60,6 @@ function formatTokens(n: number | null): string {
 function formatCost(cents: number | null): string {
   if (cents == null) return "-";
   return `$${(cents / 100).toFixed(2)}`;
-}
-
-function truncate(text: string | null, max = 90): string {
-  if (!text) return "";
-  const clean = text.replace(/\s+/g, " ").trim();
-  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
 }
 
 // One discovery run spawns several agent calls (finder, skeptic, judge per
@@ -80,10 +92,14 @@ function groupRuns(runs: AgentRunRow[]): RunGroup[] {
   return groups;
 }
 
-function groupStatus(rows: AgentRunRow[]): AgentRunStatus {
-  if (rows.some((r) => r.status === "running")) return "running";
-  if (rows.some((r) => r.status === "error")) return "error";
-  return "success";
+// The representative status + message for a whole run: a running step wins, then
+// an errored step, else the run is done. Feeds classifyRun for one header chip.
+function groupOutcome(rows: AgentRunRow[]): { status: string; message: string | null } {
+  const running = rows.find((r) => r.status === "running");
+  if (running) return { status: "running", message: null };
+  const errored = rows.find((r) => r.status === "error");
+  if (errored) return { status: "error", message: errored.error_message };
+  return { status: "success", message: null };
 }
 
 const str = (v: unknown): string | null =>
@@ -198,36 +214,40 @@ export default async function RunsPage() {
             </thead>
             <tbody>
               {groups.map((group) => {
-                // Label anything with a runId as a discovery run - even mid-run
-                // when only the Finder row exists, so a lone "Running" isn't
-                // mistaken for a stuck one-off.
+                // A runId means a discovery run (finder/skeptic/judge). Its child
+                // rows carry per-step metrics but no chip - the one chip lives on
+                // the header, so there's never a wall of duplicate pills.
                 const grouped = group.runId != null;
-                const rows = group.rows.map((run) => {
-                  const status = run.status as AgentRunStatus;
-                  const tone = STATUS_TONE[status] ?? "neutral";
-                  const label = STATUS_LABEL[status] ?? status;
+                const childRows = group.rows.map((run) => {
+                  const errText = humanizeError(run.status, run.error_message);
+                  const running = run.status === "running";
                   return (
                     <tr key={run.id}>
                       <td className="nowrap">
-                        {grouped ? (
-                          <span style={{ paddingLeft: "var(--s4)" }}>
-                            {run.agent_type}
-                          </span>
-                        ) : (
-                          run.agent_type
-                        )}
+                        <span style={{ paddingLeft: grouped ? "var(--s4)" : 0 }}>
+                          {run.agent_type}
+                        </span>
                       </td>
                       <td className="nowrap">
                         <span className="muted">{run.trigger_type}</span>
                       </td>
-                      <td>
-                        <Chip label={label} tone={tone} />
+                      <td className="nowrap">
+                        {grouped ? (
+                          <span className="muted" style={{ fontSize: "0.85rem" }}>
+                            {classifyRun(run.status, run.error_message).label.toLowerCase()}
+                          </span>
+                        ) : (
+                          (() => {
+                            const c = classifyRun(run.status, run.error_message);
+                            return <Chip label={c.label} tone={c.tone} />;
+                          })()
+                        )}
                       </td>
                       <td className="nowrap">
                         <LocalTime iso={run.started_at} />
                       </td>
                       <td className="num">
-                        {status === "running" ? (
+                        {running ? (
                           <Elapsed since={run.started_at} />
                         ) : (
                           formatDuration(run.duration_ms)
@@ -236,10 +256,8 @@ export default async function RunsPage() {
                       <td className="num">{formatTokens(run.tokens_used)}</td>
                       <td className="num">{formatCost(run.cost_cents)}</td>
                       <td className="cell-error">
-                        {run.error_message ? (
-                          <span title={run.error_message}>
-                            {truncate(run.error_message)}
-                          </span>
+                        {errText ? (
+                          <span title={run.error_message ?? undefined}>{errText}</span>
                         ) : (
                           <span className="muted">-</span>
                         )}
@@ -247,34 +265,38 @@ export default async function RunsPage() {
                     </tr>
                   );
                 });
-                if (!grouped) return rows;
-                const status = groupStatus(group.rows);
+                if (!grouped) return childRows;
+                const outcome = groupOutcome(group.rows);
+                const cls = classifyRun(outcome.status, outcome.message);
                 const runningRow = group.rows.find((r) => r.status === "running");
+                const firstStart =
+                  group.rows[group.rows.length - 1]?.started_at ?? group.rows[0]?.started_at;
                 return (
                   <Fragment key={group.key}>
                     <tr style={{ background: "var(--surface-2)" }}>
-                      <td colSpan={7}>
-                        <strong>Discovery run</strong>{" "}
-                        <span className="muted">
-                          · {group.rows.length} agent step
-                          {group.rows.length === 1 ? "" : "s"}
+                      <td colSpan={8}>
+                        <span
+                          className="row"
+                          style={{ gap: "var(--s2)", alignItems: "baseline", flexWrap: "wrap" }}
+                        >
+                          <Chip label={cls.label} tone={cls.tone} />
+                          <strong>Discovery run</strong>
+                          <span className="muted">
+                            <LocalTime iso={firstStart} />
+                          </span>
                           {runningRow ? (
-                            <>
-                              {" "}
-                              · running <strong>{runningRow.agent_type}</strong> for{" "}
-                              <Elapsed since={runningRow.started_at} />
-                            </>
-                          ) : null}
+                            <span className="muted">
+                              · {runningRow.agent_type} <Elapsed since={runningRow.started_at} />
+                            </span>
+                          ) : (
+                            <span className="muted">
+                              · {group.rows.length} step{group.rows.length === 1 ? "" : "s"}
+                            </span>
+                          )}
                         </span>
                       </td>
-                      <td>
-                        <Chip
-                          label={STATUS_LABEL[status]}
-                          tone={STATUS_TONE[status]}
-                        />
-                      </td>
                     </tr>
-                    {rows}
+                    {childRows}
                   </Fragment>
                 );
               })}

@@ -114,7 +114,10 @@ export default async function SettingsPage() {
           <h2>AI provider</h2>
           <p className="muted">
             Run the agents on Anthropic (cloud) or a local Ollama model (free and
-            private). The Anthropic key above is only used in Anthropic mode.
+            private). Only Anthropic can search the live web, so finding new
+            grants needs Anthropic mode; a local model still handles drafting,
+            judging, and profile compile. The Anthropic key above is used in
+            Anthropic mode only.
           </p>
           <LlmProviderForm
             initialProvider={llmProvider}
@@ -141,14 +144,24 @@ export default async function SettingsPage() {
       </Card>
 
       <Card>
-        <h2>Guidance your agents follow</h2>
+        <h2>Your agents</h2>
         <p className="muted">
-          This is the exact text the agents read before every run: who you are
-          and what you want, assembled from the grants you&rsquo;ve rated and
-          tracked. To change it, rate more grants or edit the preference summary
-          above.
+          Discovery runs three agents in a loop: a <strong>Finder</strong>{" "}
+          searches the web for grants, a <strong>Skeptic</strong> tries to
+          disprove each one (dead link, wrong fit, closed program), and a{" "}
+          <strong>Judge</strong> scores what survives and keeps only the strong
+          matches. Drafting works the same way with a Drafter and a Critic. They
+          all read the guidance you set above, plus what they learn from the
+          grants you rate.
         </p>
-        <pre className="voice-preview">{agentContext}</pre>
+        <details>
+          <summary style={{ cursor: "pointer" }}>
+            See the exact guidance they read
+          </summary>
+          <pre className="voice-preview" style={{ marginTop: "var(--s3)" }}>
+            {agentContext}
+          </pre>
+        </details>
       </Card>
 
       <Card>

@@ -126,10 +126,7 @@ export default function ScheduleForm({
           disabled={pending}
           style={{ width: "auto" }}
         />
-        <span className="muted">
-          {utcView ? utcView.tz : "local time"}
-          {utcView ? ` (= ${utcView.utcTime})` : ""}
-        </span>
+        <span className="muted">{utcView ? utcView.tz : "your local time"}</span>
         <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={pending}>
           {pending ? "Saving…" : "Save schedule"}
         </button>

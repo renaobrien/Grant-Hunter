@@ -125,7 +125,7 @@ export async function stopDiscovery(): Promise<StopDiscoveryResult> {
     .from("agent_runs")
     .update({
       status: "error",
-      error_message: "Stopped by user",
+      error_message: "Canceled by you",
       completed_at: new Date().toISOString(),
     })
     .eq("status", "running")

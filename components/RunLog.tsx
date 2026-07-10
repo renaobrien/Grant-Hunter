@@ -1,10 +1,8 @@
 "use client";
 
-// Live view of the discovery run's output. The run writes to a log file, not the
-// dev-server terminal, so without this the dashboard has no window into what a
-// run is actually doing. Polls getRunLog() every few seconds while a run is
-// active, auto-scrolls to the newest line, and refreshes the rest of the page
-// once the run finishes so the results table updates.
+// Collapsible view of the discovery run's output. The run writes to a log file,
+// not the dev-server terminal, so this is the only window into a live run. Stays
+// collapsed until opened; polls only while open and a run is active.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui";
@@ -22,7 +20,8 @@ export default function RunLog({
   const router = useRouter();
   const [log, setLog] = useState<string | null>(initialLog);
   const [running, setRunning] = useState(initialRunning);
-  const [stamp, setStamp] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const wasRunning = useRef(initialRunning);
 
@@ -31,7 +30,8 @@ export default function RunLog({
       const res = await getRunLog();
       setLog(res.log);
       setRunning(res.running);
-      // When a run finishes, pull the rest of the page so the table shows results.
+      setCheckedAt(new Date().toLocaleTimeString());
+      // When a run finishes, pull the rest of the page so the table updates.
       if (wasRunning.current && !res.running) router.refresh();
       wasRunning.current = res.running;
     } catch {
@@ -39,58 +39,71 @@ export default function RunLog({
     }
   }, [router]);
 
-  // Poll only while a run is active.
+  // The page auto-refreshes while a run is active; keep the "live" chip in sync
+  // with the server's view even when the panel is closed (so it can't stick).
   useEffect(() => {
-    if (!running) return;
+    setRunning(initialRunning);
+    wasRunning.current = initialRunning;
+  }, [initialRunning]);
+
+  // Poll only while the panel is open and a run is active.
+  useEffect(() => {
+    if (!open || !running) return;
+    refresh();
     const id = setInterval(refresh, POLL_MS);
     return () => clearInterval(id);
-  }, [running, refresh]);
+  }, [open, running, refresh]);
 
-  // Stamp the "updated" time on the client to avoid a hydration mismatch.
+  // Keep the newest line in view whenever the log grows while open.
   useEffect(() => {
-    setStamp(new Date().toLocaleTimeString());
-  }, [log]);
-
-  // Keep the newest line in view.
-  useEffect(() => {
+    if (!open) return;
     const el = preRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [log]);
+  }, [log, open]);
 
   return (
     <Card className="note-panel">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
-        <h3 style={{ margin: 0 }}>
-          Live run log{" "}
+      <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+        <summary style={{ cursor: "pointer" }}>
+          <span style={{ fontWeight: 600 }}>Run log</span>{" "}
           {running ? (
             <span className="chip chip-info" style={{ verticalAlign: "middle" }}>
               live
             </span>
-          ) : null}
-        </h3>
-        <button type="button" className="btn btn-sm" onClick={refresh}>
-          Refresh
-        </button>
-      </div>
-      <p className="muted" style={{ margin: "var(--s1) 0 var(--s3)" }}>
-        {running
-          ? "What the run is doing right now, straight from its output."
-          : log
-            ? "Output from the most recent run."
-            : "No run output yet - start a run above."}
-        {stamp ? ` · updated ${stamp}` : ""}
-      </p>
-      {log ? (
-        <div className="table-wrap">
-          <pre
-            ref={preRef}
-            className="voice-preview"
-            style={{ margin: 0, maxHeight: 340, overflow: "auto" }}
-          >
-            {log}
-          </pre>
+          ) : (
+            <span className="muted" style={{ fontSize: "0.85rem" }}>
+              (last run)
+            </span>
+          )}
+        </summary>
+        <div className="stack" style={{ gap: "var(--s2)", marginTop: "var(--s3)" }}>
+          <div className="row" style={{ gap: "var(--s2)", alignItems: "center" }}>
+            <button type="button" className="btn btn-sm" onClick={refresh}>
+              Refresh
+            </button>
+            {checkedAt ? (
+              <span className="muted" style={{ fontSize: "0.8rem" }}>
+                checked {checkedAt}
+              </span>
+            ) : null}
+          </div>
+          {log ? (
+            <div className="table-wrap">
+              <pre
+                ref={preRef}
+                className="voice-preview"
+                style={{ margin: 0, maxHeight: 340, overflow: "auto" }}
+              >
+                {log}
+              </pre>
+            </div>
+          ) : (
+            <p className="muted" style={{ margin: 0 }}>
+              No run output yet.
+            </p>
+          )}
         </div>
-      ) : null}
+      </details>
     </Card>
   );
 }

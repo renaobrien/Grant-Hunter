@@ -181,7 +181,7 @@ export default function SettingsForm({
         <textarea
           id="preference_summary"
           value={summary}
-          placeholder="Distilled guidance for the agents - what to favor, what to avoid. Rate a few grants, then Regenerate to fill this from your ratings."
+          placeholder="Optional. In plain words: what to favor, what to avoid. Or rate a few grants and press Regenerate to fill it in."
           onChange={(e) => setSummary(e.target.value)}
         />
         <div className="row" style={{ marginTop: "var(--s2)" }}>
@@ -203,8 +203,9 @@ export default function SettingsForm({
           ) : null}
         </div>
         <span className="field-hint">
-          The agents read this on every run. Regenerate distills your ratings and
-          board activity into it (one cheap AI call); you can also edit it by hand.
+          Optional guidance the agents read every run, on top of your ratings.
+          Regenerate fills it from the grants you&rsquo;ve rated (one cheap AI
+          call); leave it blank to rely on ratings alone.
         </span>
       </div>
 

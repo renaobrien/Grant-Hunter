@@ -12,6 +12,12 @@ import ThemeToggle from "@/components/ThemeToggle";
 // flash light. No stored choice = light (the CSS default; the OS is ignored).
 const THEME_SCRIPT = `try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}`;
 
+// Browser wallet extensions (MetaMask etc.) inject scripts into every page and
+// throw "Failed to connect to MetaMask" - nothing to do with this app. Register
+// FIRST, in <head>, so these listeners fire before Next's dev error overlay and
+// swallow that noise before it can pop the overlay. Real app errors pass through.
+const NOISE_SCRIPT = `(function(){var n=/chrome-extension:\\/\\/|moz-extension:\\/\\/|safari-web-extension:\\/\\/|metamask/i;function h(s){return n.test(String(s==null?"":s))}window.addEventListener("unhandledrejection",function(e){var r=e.reason;if(h(r&&(r.stack||r.message))||h(r)){e.stopImmediatePropagation();e.preventDefault()}},true);window.addEventListener("error",function(e){if(h((e.filename||"")+" "+(e.message||""))||h(e.error&&e.error.stack)){e.stopImmediatePropagation();e.preventDefault()}},true)})();`;
+
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -81,6 +87,7 @@ export default async function RootLayout({
     // everything below can resolve them.
     <html lang="en" style={brandVars} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: NOISE_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body>
